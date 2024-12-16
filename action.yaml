@@ -1,0 +1,50 @@
+name: 'Allure Deployer Action'
+description: 'Deploy Allure Reports as a website, with unique Ephemeral URLs per report and notification to Slack, No server required'
+author: 'Sokari Gillis-Harry'
+runs:
+  using: 'docker'
+  image: 'sokari/allure-deployer-action:latest'
+  args:
+    - storage_bucket=${{ inputs.storage_bucket }}
+    - website_id=${{ inputs.website_id }}
+    - website_expires=${{ inputs.website_expires }}
+    - keep_history=${{ inputs.keep_history }}
+    - keep_results=${{ inputs.keep_results }}
+    - slack_channel_id=${{ inputs.slack_channel_id }}
+    - allure_results_path=${{ inputs.allure_results_path }}
+    - show_retries=${{ inputs.show_retries }}
+    - show_history=${{ inputs.show_history }}
+
+inputs:
+  storage_bucket:
+    description: 'Google Cloud Storage bucket name'
+    required: true
+  website_id:
+    description: 'Unique identifier for the hosted report'
+    required: true
+  website_expires:
+    description: "Expiration duration for Report's website (e.g., 2h, 7d, 3w) Max. 30d"
+    default: '7d'
+  keep_history:
+    description: 'Save Report history to storage (true/false)'
+    default: 'true'
+  keep_results:
+    description: 'Save Report retries (result files) to storage (true/false)'
+    default: 'true'
+  slack_channel_id:
+    description: 'Slack channel ID for notifications (optional)'
+    required: false
+  allure_results_path:
+    description: 'Path to the directory containing Allure results'
+    required: true
+  show_retries:
+    description: 'Show retries in the test report (true/false)'
+    required: false
+    default: 'true'
+  show_history:
+    description: 'Show history in the test report (true/false)'
+    default: 'true'
+
+outputs:
+  report_url:
+    description: 'URL to your report if enabled'
