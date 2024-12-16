@@ -1,6 +1,11 @@
 name: 'Allure Deployer Action'
 description: 'Deploy Allure Reports as a website, with unique Ephemeral URLs per report and notification to Slack, No server required'
 author: 'Sokari Gillis-Harry'
+
+branding:
+  icon: bar-chart
+  color: green
+
 runs:
   using: 'docker'
   image: 'sokari/allure-deployer-action:latest'
