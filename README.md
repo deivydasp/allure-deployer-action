@@ -1,5 +1,5 @@
 # Allure Deployer Action
-Deploy Allure Reports as a website with ephemeral URLs, history, retries, and Slack notifications. No server required.
+Deploy Allure Reports as a website with ephemeral URLs, history, retries, and Slack notifications. No server required. </br> See [complete documentation](https://github.com/cybersokari/allure-report-deployer) for more info.
 
 ## 🚀 Features
 - **Serverless Deployment**: Publish Allure test reports to Firebase Hosting.
