@@ -1,5 +1,5 @@
 name: 'Allure Deployer Action'
-description: 'Host your Allure Reports on Firebase , with history, retries and Slack integration, No server required'
+description: 'Host your Allure Reports on the web, with history, retries and Slack integration, No server required'
 author: 'Sokari Gillis-Harry'
 
 branding:
@@ -8,49 +8,41 @@ branding:
 
 runs:
   using: 'docker'
-  image: 'docker://sokari/allure-deployer-action:latest'
+  image: 'docker://sokari/allure-deployer-action:1.1.2'
   args:
     - storage_bucket=${{ inputs.storage_bucket }}
-    - report_id=${{ inputs.report_id }}
-    - website_expires=${{ inputs.website_expires }}
-    - keep_history=${{ inputs.keep_history }}
-    - keep_results=${{ inputs.keep_results }}
-    - slack_channel_id=${{ inputs.slack_channel_id }}
+    - report_name=${{ inputs.report_name }}
+    - slack_channel=${{ inputs.slack_channel }}
     - allure_results_path=${{ inputs.allure_results_path }}
     - show_retries=${{ inputs.show_retries }}
     - show_history=${{ inputs.show_history }}
+    - prefix=${{ inputs.prefix}}
 
-inputs:
-  storage_bucket:
-    description: 'Google Cloud Storage bucket name'
-    required: true
-  report_id:
-    description: 'Unique identifier for the hosted report'
-    required: false
-    default: 'default'
-  website_expires:
-    description: "Expiration duration for Report's website (e.g., 2h, 7d, 3w) Max. 30d"
-    default: '7d'
-  keep_history:
-    description: 'Save Report history to storage (true/false)'
-    default: 'true'
-  keep_results:
-    description: 'Save Report retries (result files) to storage (true/false)'
-    default: 'true'
-  slack_channel_id:
-    description: 'Slack channel ID for notifications (optional)'
-    required: false
-  allure_results_path:
-    description: 'Path to the directory containing Allure results'
-    required: true
-  show_retries:
-    description: 'Show retries in the test report (true/false)'
-    required: false
-    default: 'true'
-  show_history:
-    description: 'Show history in the test report (true/false)'
-    default: 'true'
+  inputs:
+    storage_bucket:
+      description: 'Google Cloud Storage bucket name'
+      required: true
+    report_name:
+      description: 'Name/Title of your report'
+      required: false
+      default: 'Allure Report'
+    slack_channel:
+      description: 'Slack channel ID for notifications (optional)'
+      required: false
+    allure_results_path:
+      description: 'Path to the directory containing Allure results'
+      required: true
+    show_retries:
+      description: 'Show retries in the test report (true/false)'
+      required: false
+      default: 'true'
+    show_history:
+      description: 'Show history in the test report (true/false)'
+      default: 'true'
+    prefix:
+      description: 'The storage bucket path to back up Allure results and history files'
+      required: false
 
-outputs:
-  report_url:
-    description: 'URL to your test report'
+  outputs:
+    report_url:
+      description: 'URL to your test report'
