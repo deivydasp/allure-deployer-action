@@ -18,31 +18,31 @@ runs:
     - show_history=${{ inputs.show_history }}
     - prefix=${{ inputs.prefix}}
 
-  inputs:
-    storage_bucket:
-      description: 'Google Cloud Storage bucket name'
-      required: true
-    report_name:
-      description: 'Name/Title of your report'
-      required: false
-      default: 'Allure Report'
-    slack_channel:
-      description: 'Slack channel ID for notifications (optional)'
-      required: false
-    allure_results_path:
-      description: 'Path to the directory containing Allure results'
-      required: true
-    show_retries:
-      description: 'Show retries in the test report (true/false)'
-      required: false
-      default: 'true'
-    show_history:
-      description: 'Show history in the test report (true/false)'
-      default: 'true'
-    prefix:
-      description: 'The storage bucket path to back up Allure results and history files'
-      required: false
+inputs:
+  storage_bucket:
+    description: 'Google Cloud Storage bucket name'
+    required: true
+  report_name:
+    description: 'Name/Title of your report'
+    required: false
+    default: 'Allure Report'
+  slack_channel:
+    description: 'Slack channel ID for notifications (optional)'
+    required: false
+  allure_results_path:
+    description: 'Path to the directory containing Allure results'
+    required: true
+  show_retries:
+    description: 'Show retries in the test report (true/false)'
+    required: false
+    default: 'true'
+  show_history:
+    description: 'Show history in the test report (true/false)'
+    default: 'true'
+  prefix:
+    description: 'The storage bucket path to back up Allure results and history files'
+    required: false
 
-  outputs:
-    report_url:
-      description: 'URL to your test report'
+outputs:
+  report_url:
+    description: 'URL to your test report'
