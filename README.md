@@ -1,27 +1,29 @@
 # Allure Deployer Action
-Deploy Allure Reports as a website with ephemeral URLs, history, retries, and Slack notifications. No server required. </br> See [complete documentation](https://github.com/cybersokari/allure-report-deployer) for more info.
+Host Allure Reports on the web with history, retries, and Slack notifications.
+No server required.
+</br> See [complete documentation](https://github.com/cybersokari/allure-report-deployer) for more info.
 
 ## 🚀 Features
-- **Serverless Deployment**: Publish Allure test reports to Firebase Hosting.
-- **Slack Notifications**: Notify stakeholders with report details.
-- **History & Retries**: Integrate historical trends and retry data into reports.
-- **Customizable Settings**: Configure expiration, history, retries, and more.
+- **Serverless hosting**: Publish Allure test reports to Firebase Hosting.
+- **History & Retries**: Show history and retries in reports with history linking to previous reports.
+- **Slack Notifications**: Notify stakeholders with report URL and details.
+
 
 ## 🛠️ Inputs
-| Input Name            | Description                                                | Required | Default   |
-|-----------------------|------------------------------------------------------------|----------|-----------|
-| `storage_bucket`      | Google Cloud Storage bucket name.                          | Yes      | None      |
-| `report_name`         | The name/title of your report.                             | No       | Allure Report|
-| `slack_channel_id`    | Slack channel ID for notifications.                        | No       | None      |
-| `allure_results_path` | Directory containing Allure results.                       | Yes      | None      |
-| `show_retries`        | Display retries in the test report (`true/false`).         | No       | `true`    |
-| `show_history`        | Display historical data in the test report (`true/false`). | No       | `true`    |
+| Input Name            | Description                                                | Required | Default       |
+|-----------------------|------------------------------------------------------------|----------|---------------|
+| `storage_bucket`      | Google Cloud Storage bucket name.                          | No       | None          |
+| `report_name`         | The name/title of your report.                             | No       | Allure Report |
+| `slack_channel_id`    | Slack channel ID for notifications.                        | No       | None          |
+| `allure_results_path` | Directory containing Allure results.                       | Yes      | None          |
+| `show_retries`        | Display retries in the test report (`true/false`).         | No       | `true`        |
+| `show_history`        | Display historical data in the test report (`true/false`). | No       | `true`        |
 
 ## 🔧 Environment Variables
-| Variable                | Description                                                                 | Required | Example                              |
-|-------------------------|-----------------------------------------------------------------------------|----------|--------------------------------------|
-| `SLACK_TOKEN`           | Slack Bot API token for notifications.                                     | No       | `xoxb-****`                          |
-| `GCP_CREDENTIALS_JSON`  | Firebase (Google Cloud) credentials JSON as a string, not a file path.     | Yes      | `{ "type": "service_account", ... }` |
+| Variable               | Description                                                            | Required | Example                              |
+|------------------------|------------------------------------------------------------------------|----------|--------------------------------------|
+| `SLACK_TOKEN`          | Slack Bot API token for notifications.                                 | No       | `xoxb-****`                          |
+| `GCP_CREDENTIALS_JSON` | Firebase (Google Cloud) credentials JSON as a string, not a file path. | Yes      | `{ "type": "service_account", ... }` |
 
 ## 📤 Outputs
 | Output Name  | Description                                |
