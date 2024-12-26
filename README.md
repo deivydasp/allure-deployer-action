@@ -3,7 +3,6 @@ Deploy Allure Reports as a website with ephemeral URLs, history, retries, and Sl
 
 ## 🚀 Features
 - **Serverless Deployment**: Publish Allure test reports to Firebase Hosting.
-- **Ephemeral URLs**: Generate unique, time-bound URLs for reports.
 - **Slack Notifications**: Notify stakeholders with report details.
 - **History & Retries**: Integrate historical trends and retry data into reports.
 - **Customizable Settings**: Configure expiration, history, retries, and more.
@@ -12,10 +11,7 @@ Deploy Allure Reports as a website with ephemeral URLs, history, retries, and Sl
 | Input Name            | Description                                                | Required | Default   |
 |-----------------------|------------------------------------------------------------|----------|-----------|
 | `storage_bucket`      | Google Cloud Storage bucket name.                          | Yes      | None      |
-| `website_id`          | Unique identifier for the hosted report.                   | Yes      | None      |
-| `website_expires`     | Report expiration duration (e.g., `2h`, `7d`, `30d`).      | No       | `7d`      |
-| `keep_history`        | Save historical data to storage (`true/false`).            | No       | `true`    |
-| `keep_results`        | Save retry results to storage (`true/false`).              | No       | `true`    |
+| `report_name`         | The name/title of your report.                             | No       | Allure Report|
 | `slack_channel_id`    | Slack channel ID for notifications.                        | No       | None      |
 | `allure_results_path` | Directory containing Allure results.                       | Yes      | None      |
 | `show_retries`        | Display retries in the test report (`true/false`).         | No       | `true`    |
@@ -50,12 +46,11 @@ jobs:
         uses: cybersokari/allure-deployer-action@v1
         with:
           storage_bucket: 'my-bucket-name'
-          website_id: 'unique-site-id'
           allure_results_path: './allure-results'
           slack_channel_id: 'SLACK_CHANNEL_ID'
         env:
-          SLACK_TOKEN: '${{ secrets.SLACK_TOKEN }}'
           GCP_CREDENTIALS_JSON: '${{ secrets.GCP_CREDENTIALS_JSON }}'
+          SLACK_TOKEN: '${{ secrets.SLACK_TOKEN }}'
 ```
 
 ### Environment Setup
