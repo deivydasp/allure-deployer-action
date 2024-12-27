@@ -4,8 +4,9 @@ No server required.
 </br> See [complete documentation](https://github.com/cybersokari/allure-report-deployer) for more info.
 
 ## 🚀 Features
-- **Serverless hosting**: Publish Allure test reports to Firebase Hosting.
+- **Serverless hosting**: Host your reports on the [web](https://firebase.google.com/docs/hosting), not storage. 
 - **History & Retries**: Show history and retries in reports with history linking to previous reports.
+- **Cloud Backup**: Save test results in storage for future analysis.
 - **Slack Notifications**: Notify stakeholders with report URL and details.
 
 
@@ -14,7 +15,7 @@ No server required.
 |-----------------------|------------------------------------------------------------|----------|---------------|
 | `storage_bucket`      | Google Cloud Storage bucket name.                          | No       | None          |
 | `report_name`         | The name/title of your report.                             | No       | Allure Report |
-| `slack_channel_id`    | Slack channel ID for notifications.                        | No       | None          |
+| `slack_channel`       | Slack channel ID for notifications.                        | No       | None          |
 | `allure_results_path` | Directory containing Allure results.                       | Yes      | None          |
 | `show_retries`        | Display retries in the test report (`true/false`).         | No       | `true`        |
 | `show_history`        | Display historical data in the test report (`true/false`). | No       | `true`        |
@@ -47,9 +48,9 @@ jobs:
       - name: Run Allure Report Deployer
         uses: cybersokari/allure-deployer-action@v1
         with:
-          storage_bucket: 'my-bucket-name'
+          storage_bucket: '<your_bucket_name>'
           allure_results_path: './allure-results'
-          slack_channel_id: 'SLACK_CHANNEL_ID'
+          slack_channel: '<YOUR_SLACK_CHANNEL_ID>'
         env:
           GCP_CREDENTIALS_JSON: '${{ secrets.GCP_CREDENTIALS_JSON }}'
           SLACK_TOKEN: '${{ secrets.SLACK_TOKEN }}'
