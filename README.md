@@ -1,6 +1,8 @@
 # Allure Deployer Action
-Host Allure Reports on the web with history, retries, and Slack notifications.
-No server required.
+**Host your Allure Reports on the web with history, retries, and Slack notifications.
+No server required.**
+</br>
+</br> Example report: https://gatedaccessdev.web.app
 </br> See [complete documentation](https://github.com/cybersokari/allure-report-deployer) for more info.
 
 ## 🚀 Features
