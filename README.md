@@ -46,15 +46,17 @@ jobs:
   deploy-report:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
+      - name: Run test
+        run: |
+          Run test and create allure results
 
       - name: Run Allure Report Deployer
         uses: cybersokari/allure-deployer-action@v1
         with:
-          storage_bucket: '<your_bucket_name>'
-          allure_results_path: './allure-results'
-          slack_channel: '<YOUR_SLACK_CHANNEL_ID>'
+          storage_bucket: 'your_bucket_name'
+          allure_results_path: 'path/to/allure-results'
+          slack_channel: 'YOUR_SLACK_CHANNEL_ID'
         env:
           GOOGLE_CREDENTIALS_JSON: '${{ secrets.GCP_CREDENTIALS_JSON }}'
           SLACK_TOKEN: '${{ secrets.SLACK_TOKEN }}'
