@@ -18,7 +18,7 @@ No server required.**
 |-----------------------|------------------------------------------------------------------------|----------|---------------|
 | `storage_bucket`      | Google Cloud Storage bucket name.                                      | No       | None          |
 | `report_name`         | The name/title of your report.                                         | No       | Allure Report |
-| `slack_channel`       | Slack channel ID for notifications.                                    | No       | None          |
+| `slack_channel`       | Slack channel ID                                                       | No       | None          |
 | `allure_results_path` | Directory containing Allure results.                                   | Yes      | None          |
 | `show_retries`        | Display retries in the test report (`true/false`).                     | No       | `true`        |
 | `show_history`        | Display historical data in the test report (`true/false`).             | No       | `true`        |
