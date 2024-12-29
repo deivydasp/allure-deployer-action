@@ -10,6 +10,7 @@ No server required.**
 - **History & Retries**: Show history and retries in reports with history linking to previous reports.
 - **Cloud Backup**: Save test results in storage for future analysis.
 - **Slack Notifications**: Notify stakeholders with report URL and details.
+- **Pull Request Comment**: Post test report URL and status as comment on pull request for your team. See [example.](https://github.com/cybersokari/allure-report-deployer/pull/6#issuecomment-2564403881)
 
 
 ## 🛠️ Inputs
@@ -31,7 +32,7 @@ No server required.**
 | `GITHUB_TOKEN`            | Github auth token for pull request updates if `update_pr` is set to `comment` | No       | `ghp_*****`                          |
 
 ## 📤 Outputs
-| Output Name  | Description             |
+| Key          | Description             |
 |--------------|-------------------------|
 | `report_url` | URL of the test report. |
 
@@ -42,6 +43,9 @@ on:
   push:
     branches:
       - main
+permissions: # For when `update_pr` is `comment`
+  pull-requests: write
+  issues: write
 jobs:
   deploy-report:
     runs-on: ubuntu-latest
@@ -54,25 +58,27 @@ jobs:
       - name: Run Allure Report Deployer
         uses: cybersokari/allure-deployer-action@v1
         with:
-          storage_bucket: 'your_bucket_name'
           allure_results_path: 'path/to/allure-results'
+          storage_bucket: 'your_bucket_name'
           slack_channel: 'YOUR_SLACK_CHANNEL_ID'
+          update_pr: 'comment'
         env:
           GOOGLE_CREDENTIALS_JSON: '${{ secrets.GCP_CREDENTIALS_JSON }}'
-          SLACK_TOKEN: '${{ secrets.SLACK_TOKEN }}'
+          SLACK_TOKEN: '${{ secrets.SLACK_TOKEN }}' #Optional
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} #Optional. For when `update_pr` is `comment`
 ```
 
 ### Environment Setup
 
 ```markdown
 ## 🔧 Environment Setup
-- **Firebase Account**: Ensure access to Firebase Hosting and Google Cloud Storage.
-- **Google Cloud Credentials**: Set up a service account and download the JSON key file.
+- **Firebase Google Credentials**: Export a [service account](https://firebase.google.com/docs/admin/setup#initialize_the_sdk_in_non-google_environments) JSON file from your Firebase Console.
 - **Slack Integration**: Optional. Create a Slack app for notifications and obtain its token.
+- **Pull request comment**: Optional. Set the `GITHUB_TOKEN` env with `pull_request` and `issues` write permission enabled 
 ```
 
 ## 📜 License
 This project is licensed under the MIT License. See the [LICENSE](https://opensource.org/license/mit) file for more details.
 
 ## 🤝 Contributing
-Contributions are welcome! Open issues or submit pull requests to improve this action.
+Contributions are welcome! Open issues or submit [pull requests](https://github.com/cybersokari/allure-report-deployer) to improve this action.
