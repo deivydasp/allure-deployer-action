@@ -68,14 +68,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} #Optional. For when `update_pr` is `comment`
 ```
 
-### Environment Setup
 
-```markdown
 ## 🔧 Environment Setup
+
 - **Firebase Google Credentials**: Export a [service account](https://firebase.google.com/docs/admin/setup#initialize_the_sdk_in_non-google_environments) JSON file from your Firebase Console.
 - **Slack Integration**: Optional. Create a Slack app for notifications and obtain its token.
 - **Pull request comment**: Optional. Set the `GITHUB_TOKEN` env with `pull_request` and `issues` write permission enabled 
-```
+
 
 ## 📜 License
 This project is licensed under the MIT License. See the [LICENSE](https://opensource.org/license/mit) file for more details.
