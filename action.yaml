@@ -8,7 +8,7 @@ branding:
 
 runs:
   using: 'docker'
-  image: 'docker://sokari/allure-deployer:1.1.16'
+  image: 'docker://sokari/allure-deployer:1.1.17'
   args:
     - storage_bucket=${{ inputs.storage_bucket }}
     - report_name=${{ inputs.report_name }}
