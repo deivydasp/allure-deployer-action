@@ -20,7 +20,7 @@ No server required.**
 | `report_name`         | The name/title of your report.                                         | No       | Allure Report |
 | `slack_channel`       | Slack channel ID                                                       | No       | None          |
 | `allure_results_path` | Directory containing Allure results.                                   | Yes      | None          |
-| `show_retries`        | Display retries in the test report (`true/false`).                     | No       | `true`        |
+| `retries`             | Number of previous test runs to show as retries in the new report when Storage `storage_bucket` is provided                     | No       | `0`        |
 | `show_history`        | Display historical data in the test report (`true/false`).             | No       | `true`        |
 | `update_pr`           | Add report info as pr comment or actions summary (`comment`/`summary`) | No       | `summary`     |
 
@@ -56,10 +56,12 @@ jobs:
           Run test and create allure results
 
       - name: Run Allure Report Deployer
-        uses: cybersokari/allure-deployer-action@v1
+        uses: cybersokari/allure-deployer-action@v1.2
         with:
           allure_results_path: 'path/to/allure-results'
           storage_bucket: 'your_bucket_name'
+          retries: 4
+          show_history: true
           slack_channel: 'YOUR_SLACK_CHANNEL_ID'
           update_pr: 'comment'
         env:
