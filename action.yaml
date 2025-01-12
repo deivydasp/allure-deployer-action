@@ -1,5 +1,5 @@
 name: 'Allure Deployer Action'
-description: 'Host your Allure Reports on the web, with history, retries and Slack integration, No server required'
+description: 'Host your Allure Reports on the web, with history, retries, and Slack integration, No server required'
 author: 'Sokari Gillis-Harry'
 
 branding:
@@ -8,7 +8,7 @@ branding:
 
 runs:
   using: 'docker'
-  image: 'docker://sokari/allure-deployer:1.2.0'
+  image: 'docker://sokari/allure-deployer:1.1.13'
   args:
     - storage_bucket=${{ inputs.storage_bucket }}
     - report_name=${{ inputs.report_name }}
