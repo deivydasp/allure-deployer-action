@@ -14,15 +14,16 @@ No server required.**
 
 
 ## 🛠️ Inputs
-| Input Name            | Description                                                            | Required | Default       |
-|-----------------------|------------------------------------------------------------------------|----------|---------------|
-| `storage_bucket`      | Google Cloud Storage bucket name.                                      | No       | None          |
-| `report_name`         | The name/title of your report.                                         | No       | Allure Report |
-| `slack_channel`       | Slack channel ID                                                       | No       | None          |
-| `allure_results_path` | Directory containing Allure results.                                   | Yes      | None          |
-| `retries`             | Number of previous test runs to show as retries in the new report when Storage `storage_bucket` is provided                     | No       | `0`        |
-| `show_history`        | Display historical data in the test report (`true/false`).             | No       | `true`        |
-| `update_pr`           | Add report info as pr comment or actions summary (`comment`/`summary`) | No       | `summary`     |
+| Input Name            | Description                                                                                                   | Required | Default       |
+|-----------------------|---------------------------------------------------------------------------------------------------------------|----------|---------------|
+| `storage_bucket`      | Google Cloud Storage bucket name.                                                                             | No       | None          |
+| `report_name`         | The name/title of your report.                                                                                | No       | Allure Report |
+| `slack_channel`       | Slack channel ID                                                                                              | No       | None          |
+| `allure_results_path` | Directory containing Allure results.                                                                          | Yes      | None          |
+| `retries`             | Number of previous test runs to show as retries in the new report when Storage `storage_bucket` is provided   | No       | `0`           |
+| `show_history`        | Display historical data in the test report (`true/false`).                                                    | No       | `true`        |
+| `update_pr`           | Add report info as pr comment or actions summary (`comment`/`summary`)                                        | No       | `summary`     |
+| `output`              | A directory to generate Allure report into. Setting this value disables report hosting and Slack notification | No       | None          |
 
 ## 🔧 Environment Variables
 | Variable                  | Description                                                                   | Required | Example                              |
