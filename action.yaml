@@ -8,45 +8,47 @@ branding:
 
 runs:
   using: "docker"
-  image: "docker://sokari/allure-deployer:1.3.0"
-  args:
-    - storage_bucket=${{ inputs.storage_bucket }}
-    - report_name=${{ inputs.report_name }}
-    - slack_channel=${{ inputs.slack_channel }}
-    - allure_results_path=${{ inputs.allure_results_path }}
-    - retries=${{ inputs.retries }}
-    - show_history=${{ inputs.show_history }}
-    - prefix=${{ inputs.prefix}}
-    - update_pr=${{inputs.update_pr}}
-    - output=${{inputs.output}}
+  image: "Dockerfile"
 
 inputs:
-  storage_bucket:
-    description: "Google Cloud Storage bucket name"
+  google_credentials_json:
+    description: "Firebase (Google Cloud) credentials JSON"
     required: true
+  storage_bucket:
+    description: "A Google Cloud Storage bucket for managing Allure History and Retries"
+    required: false
   report_name:
     description: "Name/Title of your report"
     default: "Allure Report"
   slack_channel:
     description: "Slack channel ID for notifications (optional)"
     required: false
+  slack_token:
+    description: "Slack Token"
+    required: false
   allure_results_path:
     description: "Path to the directory containing Allure results"
     required: true
   retries:
     description: "Number of previous test runs to show as retries in new test report (Default 0)"
-    default: 0
+    default: '0'
   show_history:
     description: "Show history in the test report (true/false)"
     default: "true"
   prefix:
     description: "The storage bucket path to back up Allure results and history files"
     required: false
-  update_pr:
-    description: "Add report info (url and status) as pull request comment or actions summary"
-    default: "summary"
+  pr_comment:
+    description: "Post test report information as pull request comment. Requires `github_token` to be set with permission  "
+    default: "false"
   output:
     description: "A directory to generate Allure report into. Setting this value disables report hosting and Slack notification"
+    required: false
+  github_token:
+    description: "Set generated GITHUB_TOKEN for adding report info to pr as comment and deploying report to GitHub pages"
+    required: false
+  github_pages_branch:
+    description: "Set target branch for Deploying test report to GitHub Pages"
     required: false
 
 outputs:
