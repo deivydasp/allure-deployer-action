@@ -20,6 +20,9 @@ inputs:
   report_name:
     description: "Name/Title of your report"
     default: "Allure Report"
+  target:
+    description: "Set where to deploy test Report. firebase or github"
+    default: 'firebase'
   slack_channel:
     description: "Slack channel ID for notifications (optional)"
     required: false
@@ -49,7 +52,7 @@ inputs:
     required: false
   github_pages_branch:
     description: "Set target branch for Deploying test report to GitHub Pages"
-    required: false
+    default: 'gh-pages'
 
 outputs:
   report_url:

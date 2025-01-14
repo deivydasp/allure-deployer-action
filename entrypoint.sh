@@ -34,6 +34,29 @@ if [ -n "$INPUT_OUTPUT" ]; then
   [ -n "$INPUT_PREFIX" ] && deploy_command="$deploy_command --prefix $INPUT_PREFIX"
   deploy_command="$deploy_command --output /github/workspace/$INPUT_OUTPUT"
 else
+  # Ensure INPUT_TARGET is set
+  if [ -z "$INPUT_TARGET" ]; then
+      echo "Error: INPUT_TARGET is not set. Please specify 'firebase' or 'github'." >&2
+      exit 1
+  fi
+
+  if [ "$INPUT_TARGET" = "firebase" ]; then
+      # Unset INPUT_GITHUB_PAGES_BRANCH if targeting Firebase
+      if [ -n "$INPUT_GITHUB_PAGES_BRANCH" ]; then
+          unset INPUT_GITHUB_PAGES_BRANCH
+      fi
+  elif [ "$INPUT_TARGET" = "github" ]; then
+      # Ensure INPUT_GITHUB_TOKEN is set for GitHub deployments
+      if [ -z "$INPUT_GITHUB_TOKEN" ]; then
+          echo "Error: Set github_token for GitHub target." >&2
+          exit 1
+      fi
+  else
+      # Handle unexpected INPUT_TARGET values
+      echo "Error: Invalid target value. Supported values are 'firebase' and 'github'." >&2
+      exit 1
+  fi
+
   deploy_command="allure-deployer deploy \"$INPUT_ALLURE_RESULTS_PATH\""
   [ -n "$INPUT_REPORT_NAME" ] && deploy_command="$deploy_command $INPUT_REPORT_NAME"
   [ -n "$GOOGLE_APPLICATION_CREDENTIALS" ] && deploy_command="$deploy_command --gcp-json $GOOGLE_APPLICATION_CREDENTIALS"
