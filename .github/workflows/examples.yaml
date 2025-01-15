@@ -58,3 +58,50 @@ jobs:
           show_history: ${{github.event.inputs.show-history}}
           retries: ${{github.event.inputs.retries}}
           prefix: 'test-action-gh-pages'
+
+  test-action-gh-pages-multi-module:
+    if: ${{ github.event.inputs.job == 'multi-module' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4.1.5
+      - name: Generate app module report
+        uses: cybersokari/allure-deployer-action@v1.4.2
+        with:
+          target: 'github'
+          allure_results_path: 'modules/app/allure-results'
+          output: 'allure_report' # Generate without deploying
+          google_credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+          storage_bucket: ${{secrets.STORAGE_BUCKET}}
+          show_history: 'true'
+          retries: 1
+      - name: Generate formatter module report
+        uses: cybersokari/allure-deployer-action@v1.4.2
+        with:
+          allure_results_path: 'modules/formatter/allure-results'
+          output: 'allure_report' # Generate without deploying
+          google_credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+          storage_bucket: ${{secrets.STORAGE_BUCKET}}
+          show_history: 'true'
+          retries: 2
+      - name: Generate utils module report
+        uses: cybersokari/allure-deployer-action@v1.4.2
+        with:
+          allure_results_path: 'modules/utils/allure-results'
+          output: 'allure_report' # Generate without deploying
+          google_credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+          storage_bucket: ${{secrets.STORAGE_BUCKET}}
+          show_history: 'true'
+          retries: 3
+      - name: Generate and Deploy testUtils report from aggregated retries (result files) in Storage bucket
+        uses: cybersokari/allure-deployer-action@v1.4.2
+        with:
+          target: 'github'
+          github_pages_branch: 'gh-pages'
+          github_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          allure_results_path: 'modules/testUtils/allure-results'
+          google_credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+          storage_bucket: ${{secrets.STORAGE_BUCKET}}
+          show_history: 'true'
+          retries: 4
