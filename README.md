@@ -1,13 +1,88 @@
 # Allure Deployer Action
 **Host your Allure Reports on the web with history, retries, and Slack notifications.
 No server required.**
-</br>Supports Firebase Hosting and GitHub Pages.
+</br>
+</br>
+Supports deployment to **Firebase Hosting** and **GitHub Pages**.
 </br>
 </br> Example report: https://gatedaccessdev.web.app
 </br> See [complete documentation](https://github.com/cybersokari/allure-report-deployer) for more info.
 
+
+## 📋 Examples
+
+**Deploy report to GitHub Pages**
+```yaml
+jobs:
+  gh-pages:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4.1.5
+      - name: Run test
+        run: #Run test and create allure results
+      - name: Deploy Reports to GitHub pages with History and Retries
+        uses: cybersokari/allure-deployer-action@v1.4.2
+        with:
+          target: 'github'
+          github_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          github_pages_branch: 'gh-pages'
+          allure_results_path: 'allure-results'
+          google_credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }} # Required for History and Retries
+          storage_bucket: ${{vars.STORAGE_BUCKET}}
+          show_history: 'true'
+          retries: 5
+```
+**Deploy report to Firebase Hosting**
+```yaml
+jobs:
+  firebase:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.1.5
+      - name: Run test
+        run: #Run test and create allure results
+      - name: Deploy Reports to Firebase with History and Retries
+        uses: cybersokari/allure-deployer-action@v1.4.2
+        with:
+          target: 'firebase'
+          allure_results_path: 'allure-results'
+          google_credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+          storage_bucket: ${{vars.STORAGE_BUCKET}}
+          show_history: 'true'
+          retries: 5
+```
+
+**Deploy report to Firebase Hosting on Pull request**
+```yaml
+on:
+  pull_request:
+jobs:
+  firebase:
+    runs-on: ubuntu-latest
+    permissions: 
+      pull-requests: write # For when `pr_comment` is `true`
+      issues: write # For when `pr_comment` is `true`
+    steps:
+      - uses: actions/checkout@v4.1.5
+      - name: Run test
+        run: #Run test and create allure results
+      - name: Deploy Reports to Firebase with History and Retries
+        uses: cybersokari/allure-deployer-action@v1.4.2
+        with:
+          target: 'firebase'
+          allure_results_path: 'allure-results'
+          google_credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+          storage_bucket: ${{vars.STORAGE_BUCKET}}
+          show_history: 'true'
+          retries: 5
+          pr_comment: 'true'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+```
+
 ## 🚀 Features
-- **Serverless hosting**: Host your reports on the [web](https://firebase.google.com/docs/hosting), not storage. 
+- **Serverless hosting**: Host your reports on the [web](https://firebase.google.com/docs/hosting), not storage.
 - **History & Retries**: Show history and retries in reports with history linking to previous reports.
 - **Cloud Backup**: Save test results in storage for future analysis.
 - **Slack Notifications**: Notify stakeholders with report URL and details.
@@ -37,36 +112,6 @@ No server required.**
 | Key          | Description             |
 |--------------|-------------------------|
 | `report_url` | URL of the test report. |
-
-## 📋 Example Usage
-```yaml
-name: Allure Report Deployer
-on:
-  pull_request:
-permissions: # For when `pr_comment` is `true`
-  pull-requests: write
-  issues: write
-jobs:
-  deploy-report:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Run test
-        run: |
-          Run test and create allure results
-
-      - name: Run Allure Report Deployer
-        uses: cybersokari/allure-deployer-action@v1.4.1
-        with:
-          google_credentials_json: ${{ secrets.GCP_CREDENTIALS_JSON }}
-          allure_results_path: 'path/to/allure-results'
-          storage_bucket: 'your_bucket_name'
-          retries: 4
-          show_history: 'true'
-          pr_comment: 'true'
-          target: 'github'
-          github_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
-```
 
 
 ## 🔧 Environment Setup

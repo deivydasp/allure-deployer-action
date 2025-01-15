@@ -1,9 +1,9 @@
-name: Deploy
+name: Build Docker
 on:
   workflow_dispatch:
     inputs:
-      cli_version:
-        description: Version of the CLI to include in the Docker image
+      cli_sem_ver:
+        description:  allure-deployer CLI's semantic version to use for the Docker image
         required: true
 jobs:
   deploy-docker:
@@ -22,7 +22,7 @@ jobs:
           file: Dockerfile
           platforms: linux/amd64
           push: true
-          build-args: CLI_VERSION=${{inputs.cli_version}}
+          build-args: CLI_VERSION=${{inputs.cli_sem_ver}}
           tags: |
             sokari/allure-deployer-action:${{ github.sha }}
-            sokari/allure-deployer-action:${{inputs.cli_version}}
+            sokari/allure-deployer-action:${{inputs.cli_sem_ver}}
