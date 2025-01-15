@@ -8,7 +8,7 @@ branding:
 
 runs:
   using: "docker"
-  image: "Dockerfile"
+  image: "docker://sokari/allure-deployer-action:1.4.3"
 
 inputs:
   google_credentials_json:
