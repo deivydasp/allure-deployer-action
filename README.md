@@ -91,22 +91,22 @@ jobs:
 
 
 ## 🛠️ Inputs
-| Input                     | Description                                                                                                      | Required | Default          |
-|---------------------------|------------------------------------------------------------------------------------------------------------------|----------|------------------|
-| `google_credentials_json` | Firebase (Google Cloud) credentials JSON                                                                         | Yes      | None             |
-| `allure_results_path`     | Path to the directory containing Allure results files.                                                           | Yes      | `allure-results` |
-| `report_name`             | The name/title of your report.                                                                                   | No       | `Allure Report`  |
-| `target`                  | Set where to deploy test Report. `firebase` or `github`. `github` requires `github_token`                        | No       | `firebase`       |
-| `storage_bucket`          | Name of the Google Cloud Storage bucket for backup and history storage.                                          | No       | None             |
-| `prefix`                  | Path prefix in the Cloud Storage bucket for archiving files.                                                     | No       | None             |
-| `show_history`            | Display history from previous test runs.                                                                         | No       | `true`           |
-| `retries`                 | Number of previous test runs to show as retries in the upcoming report when Storage `storage_bucket` is provided | No       | 0                |
-| `output`                  | A directory to generate Allure report into. Setting this value disables report hosting and Slack notification    | No       | None             |
-| `slack_channel`           | ID of the Slack channel to send notifications about report links.                                                | No       | None             |
-| `slack_token`             | Token for Slack App to send notifications with report URLs.                                                      | No       | None             |
-| `github_token`            | A generated GITHUB_TOKEN for when `github_pages_branch` is provide or when `pr_comment` is set to `true`         | No       | None             |
-| `pr_comment`              | Post test report information as pull request comment. Requires `github_token` to be set with permission          | No       | `false`          |
-| `github_pages_branch`     | Set target branch for Deploying test report to GitHub Pages. Requires `github_token` to be set with permission   | No       | None             |
+| Input                     | Description                                                                                                      | Required/Optional | Default          |
+|---------------------------|------------------------------------------------------------------------------------------------------------------|-------------------|------------------|
+| `google_credentials_json` | Firebase (Google Cloud) credentials JSON                                                                         | Required          | None             |
+| `allure_results_path`     | Path to the directory containing Allure results files.                                                           | Required          | `allure-results` |
+| `report_name`             | The name/title of your report.                                                                                   | Optional          | `Allure Report`  |
+| `target`                  | Set where to deploy test Report. `firebase` or `github`. `github` requires `github_token`                        | Optional          | `firebase`       |
+| `storage_bucket`          | Name of the Google Cloud Storage bucket for backup and history storage.                                          | Optional          | None             |
+| `prefix`                  | Path prefix in the Cloud Storage bucket for archiving files for History and Retries.                             | Optional          | None             |
+| `show_history`            | Display history from previous test runs.                                                                         | Optional          | `true`           |
+| `retries`                 | Number of previous test runs to show as retries in the upcoming report when Storage `storage_bucket` is provided | Optional          | 0                |
+| `output`                  | A directory to generate Allure report into. Setting this value disables report hosting and Slack notification    | Optional          | None             |
+| `slack_channel`           | ID of the Slack channel to send notifications about report links.                                                | Optional          | None             |
+| `slack_token`             | Token for Slack App to send notifications with report URLs.                                                      | Optional          | None             |
+| `github_token`            | A generated GITHUB_TOKEN for when `github_pages_branch` is provide or when `pr_comment` is set to `true`         | Optional          | None             |
+| `pr_comment`              | Post test report information as pull request comment. Requires `github_token` to be set with permission          | Optional          | `false`          |
+| `github_pages_branch`     | Set target branch for Deploying test report to GitHub Pages. Requires `github_token` to be set with permission   | Optional          | None             |
 
 
 ## 📤 Outputs
