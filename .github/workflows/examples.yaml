@@ -32,8 +32,8 @@ jobs:
           target: 'firebase'
           google_credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
           allure_results_path: 'assets/allure-results'
-          storage_bucket: ${{vars.STORAGE_BUCKET}}
-          slack_channel: ${{secrets.SLACK_CHANNEL_ID}}
+          storage_bucket: ${{secrets.STORAGE_BUCKET}}
+          slack_channel: ${{secrets.SLACK_CHANNEL}}
           slack_token: ${{secrets.SLACK_TOKEN}}
           show_history: ${{github.event.inputs.show-history}}
           retries: ${{github.event.inputs.retries}}
@@ -54,7 +54,7 @@ jobs:
           github_pages_branch: 'gh-pages'
           github_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
           allure_results_path: 'assets/allure-results'
-          storage_bucket: ${{vars.STORAGE_BUCKET}}
+          storage_bucket: ${{secrets.STORAGE_BUCKET}}
           show_history: ${{github.event.inputs.show-history}}
           retries: ${{github.event.inputs.retries}}
           prefix: 'test-action-gh-pages'
