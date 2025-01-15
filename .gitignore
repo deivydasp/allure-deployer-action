@@ -1,4 +1,6 @@
-
 .idea
 allure-deployer-action.iml
 .env
+dist
+!dist/index.js
+!dist/licenses.txt

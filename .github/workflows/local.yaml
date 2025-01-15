@@ -1,0 +1,30 @@
+on:
+  workflow_dispatch:
+    inputs:
+      retries:
+        description: 'Number of test runs to show as retries in report'
+        default: '10'
+      show-history:
+        description: 'Show keep history in report'
+        type: boolean
+        default: true
+      report-name:
+        description: 'Title of the report'
+        default: 'Allure Report'
+jobs:
+  test-local:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.1.5
+      - name: Deploy Reports to Firebase with History and Retries
+        uses: ./action.yaml
+        with:
+          target: 'firebase'
+          google_credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+          allure_results_path: 'allure-results'
+          storage_bucket: ${{secrets.STORAGE_BUCKET}}
+          slack_channel: ${{secrets.SLACK_CHANNEL}}
+          slack_token: ${{secrets.SLACK_TOKEN}}
+          show_history: ${{github.event.inputs.show-history}}
+          retries: ${{github.event.inputs.retries}}
+          prefix: 'test-action-firebase'
