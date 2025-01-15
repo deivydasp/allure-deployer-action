@@ -5,13 +5,12 @@ No server required.
 </br>
 Supports deployment to **Firebase Hosting** and **GitHub Pages**.
 </br>
-</br> Example report: https://gatedaccessdev.web.app
-</br> See [complete documentation](https://github.com/cybersokari/allure-report-deployer) for more info.
-
 
 ## 📋 Examples
 
 **Deploy report to GitHub Pages**
+</br>Example test run:
+[actions/runs/12783827755](https://github.com/cybersokari/allure-deployer-action/actions/runs/12783827755)
 ```yaml
 jobs:
   gh-pages:
@@ -35,6 +34,8 @@ jobs:
           retries: 5
 ```
 **Deploy report to Firebase Hosting**
+</br>Example test run:
+[actions/runs/12783830022](https://github.com/cybersokari/allure-deployer-action/actions/runs/12783830022)
 ```yaml
 jobs:
   firebase:
@@ -120,6 +121,7 @@ jobs:
 - **Slack Integration**: Optional. Create a Slack app for notifications and obtain its token.
 - **Pull request comment**: Optional. Set the `github_token` input with `pull_request` and `issues` write permission enabled 
 
+See [complete documentation](https://github.com/cybersokari/allure-report-deployer) for more info.
 
 ## 📜 License
 This project is licensed under the [BSD-3 License](LICENSE). See the LICENSE file for details.
