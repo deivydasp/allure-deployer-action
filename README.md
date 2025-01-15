@@ -1,6 +1,6 @@
 # Allure Deployer Action
-**Host your Allure Reports on the web with history, retries, and Slack notifications.
-No server required.**
+Host your Allure Reports on the web with history, retries, and Slack notifications.
+No server required.
 </br>
 </br>
 Supports deployment to **Firebase Hosting** and **GitHub Pages**.
