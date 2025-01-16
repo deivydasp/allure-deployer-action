@@ -1,8 +1,7 @@
 import * as process from "node:process";
 // Import necessary modules and commands for the main program functionality
-import { Allure, ConsoleNotifier, GoogleStorageService, getDashboardUrl, NotificationData, SlackService, SlackNotifier, Storage, getReportStats, NotifyHandler, FirebaseHost, FirebaseService, validateResultsPaths, getRuntimeDirectory } from "allure-deployer-shared";
+import { Allure, ConsoleNotifier, GoogleStorageService, getDashboardUrl, NotificationData, SlackService, SlackNotifier, Storage, getReportStats, NotifyHandler, FirebaseHost, FirebaseService, validateResultsPaths, getRuntimeDirectory, copyFiles } from "allure-deployer-shared";
 import { Storage as GCPStorage } from '@google-cloud/storage';
-import { copyFiles } from "./utilities/file-util.js";
 import { GitHubService } from "./services/github.service.js";
 import path from "node:path";
 import { GitHubNotifier } from "./features/messaging/github-notifier.js";
@@ -10,7 +9,7 @@ import { GithubPagesService } from "./services/github-pages.service.js";
 import { GithubHost } from "./features/hosting/github.host.js";
 import github from "@actions/github";
 import core from "@actions/core";
-import { setGoogleCredentialsEnv } from "./utilities/util.js";
+import { setGoogleCredentialsEnv, validateSlackConfig } from "./utilities/util.js";
 function getInput(name, options) {
     const input = core.getInput(name, options);
     return input.trim();
@@ -21,7 +20,6 @@ export function main() {
         const creds = getInput('google_credentials_json', { required: true });
         const firebaseProjectId = await setGoogleCredentialsEnv(creds);
         const resultsPaths = getInput('allure_results_path', { required: true });
-        getInput('storage_bucket');
         const showHistory = core.getBooleanInput('show_history');
         const retries = parseInt(getInput('retries') || '0', 10);
         const runtimeDir = await getRuntimeDirectory();
@@ -51,7 +49,7 @@ export function main() {
             uploadRequired: showHistory || retries > 0,
             downloadRequired: showHistory || retries > 0,
             firebaseProjectId,
-            host
+            host,
         };
         const outputPath = getInput('output');
         if (outputPath) {
@@ -131,13 +129,13 @@ async function setupStaging(args, storage) {
 }
 // Generates the Allure report with metadata
 async function generateReport({ allure, reportUrl, args }) {
-    const executor = args.host ? createExecutor({ reportUrl }) : undefined;
+    const executor = args.host ? createExecutor(reportUrl) : undefined;
     console.log('Generating Allure report...');
     const result = await allure.generate(executor);
     console.log('Report generated successfully!');
     return result;
 }
-function createExecutor({ reportUrl }) {
+function createExecutor(reportUrl) {
     const buildName = `GitHub Run ID: ${github.context.runId}`;
     return {
         name: 'Allure Report Deployer',
@@ -179,8 +177,11 @@ async function finalize({ args, storage }) {
 // Sends notifications about deployment status
 async function notify(args, resultsStatus, reportUrl) {
     const notifiers = [new ConsoleNotifier(args)];
-    if (args.slackConfig) {
-        const slackClient = new SlackService(args.slackConfig);
+    const slackChannel = core.getInput('slack_channel');
+    const slackToken = core.getInput('slack_token');
+    const slackConfig = validateSlackConfig(slackChannel, slackToken);
+    if (slackConfig) {
+        const slackClient = new SlackService(slackConfig);
         notifiers.push(new SlackNotifier(slackClient, args));
     }
     const dashboardUrl = () => {

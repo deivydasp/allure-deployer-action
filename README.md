@@ -5,6 +5,9 @@ No server required.
 </br>
 Supports deployment to **Firebase Hosting** and **GitHub Pages**.
 </br>
+</br>
+Works on all latest Runners (`ubuntu-latest`, `macos-latest`, `windows-latest`) by default.
+Requires Java setup for self-hosted Runners.
 
 ## 📋 Examples
 
@@ -89,7 +92,6 @@ jobs:
 - **Slack Notifications**: Notify stakeholders with report URL and details.
 - **Pull Request Comment**: Post test report URL and status as comment on pull request for your team. See [example.](https://github.com/cybersokari/allure-report-deployer/pull/6#issuecomment-2564403881)
 
-
 ## 🛠️ Inputs
 | Input                     | Description                                                                                                      | Required/Optional | Default          |
 |---------------------------|------------------------------------------------------------------------------------------------------------------|-------------------|------------------|
@@ -124,7 +126,7 @@ jobs:
 See [complete documentation](https://github.com/cybersokari/allure-report-deployer) for more info.
 
 ## 📜 License
-This project is licensed under the [BSD-3 License](LICENSE). See the LICENSE file for details.
+This project is licensed under the [BSD-3 License](licenses.txt). See the LICENSE file for details.
 
 ## 🤝 Contributing
 Contributions are welcome! Open issues or submit [pull requests](https://github.com/cybersokari/allure-report-deployer) to improve this action.

@@ -17,10 +17,9 @@ import {
     ReportStatistic,
     FirebaseHost,
     FirebaseService,
-    validateResultsPaths, getRuntimeDirectory, HostingProvider
+    validateResultsPaths, getRuntimeDirectory, HostingProvider, copyFiles
 } from "allure-deployer-shared";
 import {Storage as GCPStorage} from '@google-cloud/storage'
-import {copyFiles} from "./utilities/file-util.js";
 import {GitHubService} from "./services/github.service.js";
 import path from "node:path";
 import {GitHubNotifier} from "./features/messaging/github-notifier.js";
@@ -28,7 +27,7 @@ import {GithubPagesService} from "./services/github-pages.service.js";
 import {GithubHost} from "./features/hosting/github.host.js";
 import github from "@actions/github";
 import core from "@actions/core";
-import {setGoogleCredentialsEnv} from "./utilities/util.js";
+import {setGoogleCredentialsEnv, validateSlackConfig} from "./utilities/util.js";
 
 
 function getInput(name: string, options?: core.InputOptions): string | undefined {
@@ -42,7 +41,6 @@ export function main() {
         const creds = getInput('google_credentials_json', { required: true })
         const firebaseProjectId = await setGoogleCredentialsEnv(creds!)
         const resultsPaths = getInput('allure_results_path', { required: true })!
-        getInput('storage_bucket')
         const showHistory = core.getBooleanInput('show_history');
         const retries = parseInt(getInput('retries') || '0', 10)
         const runtimeDir = await getRuntimeDirectory()
@@ -72,7 +70,7 @@ export function main() {
             uploadRequired: showHistory || retries > 0,
             downloadRequired: showHistory || retries > 0,
             firebaseProjectId,
-            host
+            host,
         };
         const outputPath = getInput('output')
         if(outputPath) {
@@ -80,7 +78,6 @@ export function main() {
         } else {
             await runDeploy(inputs)
         }
-
     })()
 }
 
@@ -157,16 +154,14 @@ async function generateReport({allure, reportUrl, args}: {
     reportUrl?: string,
     args: ArgsInterface
 }): Promise<string> {
-    const executor = args.host ? createExecutor({reportUrl}) : undefined
+    const executor = args.host ? createExecutor(reportUrl) : undefined
     console.log('Generating Allure report...')
     const result = await allure.generate(executor)
     console.log('Report generated successfully!')
     return result;
 }
 
-function createExecutor({reportUrl}: {
-    reportUrl?: string,
-}): ExecutorInterface {
+function createExecutor(reportUrl?: string): ExecutorInterface {
     const buildName = `GitHub Run ID: ${github.context.runId}`
     return {
         name: 'Allure Report Deployer',
@@ -208,8 +203,11 @@ async function finalize({args, storage}: {
 // Sends notifications about deployment status
 async function notify(args: ArgsInterface, resultsStatus: ReportStatistic, reportUrl?: string) {
     const notifiers: Notifier[] = [new ConsoleNotifier(args)];
-    if (args.slackConfig) {
-        const slackClient = new SlackService(args.slackConfig)
+    const slackChannel = core.getInput('slack_channel');
+    const slackToken = core.getInput('slack_token');
+    const slackConfig = validateSlackConfig(slackChannel, slackToken)
+    if (slackConfig) {
+        const slackClient = new SlackService(slackConfig)
         notifiers.push(new SlackNotifier(slackClient, args));
     }
     const dashboardUrl = () => {
