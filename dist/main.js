@@ -121,7 +121,7 @@ async function setupStaging(args, storage) {
     });
     console.log('Staging files...');
     const result = Promise.all([
-        args.host?.init(args.clean),
+        args.host?.init(args.clean), // Initialize Firebase hosting site
         copyResultsFiles(),
         args.downloadRequired ? storage?.stageFilesFromStorage() : undefined, // Prepare cloud storage files
     ]);
@@ -169,7 +169,7 @@ async function finalize({ args, storage }) {
     start();
     const result = await Promise.all([
         getReportStats(path.join(args.REPORTS_DIR, 'widgets/summary.json')),
-        args.host?.deploy(),
+        args.host?.deploy(), // Deploy to Firebase hosting
         storage?.uploadArtifacts(), // Upload artifacts to storage bucket
     ]);
     success();

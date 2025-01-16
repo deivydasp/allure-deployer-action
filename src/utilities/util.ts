@@ -6,6 +6,7 @@ import {getRuntimeDirectory, readJsonFile} from "./file-util.js";
 import {ServiceAccountJson} from "./google-credentials-helper.js";
 import chalk from "chalk";
 import {ReportStatistic, SlackConfig} from "allure-deployer-shared";
+import path from "node:path";
 
 
 export const ERROR_MESSAGES = {
@@ -95,9 +96,10 @@ export interface WithOraParams<T> {
 export async function setGoogleCredentialsEnv(gcpJson: string): Promise<string> {
     try {
         const serviceAccount =  JSON.parse(gcpJson) as ServiceAccountJson;
-        const path = `${(await getRuntimeDirectory())}/credentials/key.json`;
-        await fs.writeFile(path, JSON.stringify(serviceAccount, null, 2), 'utf8');
-        process.env.GOOGLE_APPLICATION_CREDENTIALS = path;
+        const credPath = `${(await getRuntimeDirectory())}/credentials/key.json`;
+        await fs.mkdir(path.dirname(credPath), { recursive: true });
+        await fs.writeFile(credPath, JSON.stringify(serviceAccount, null, 2), 'utf8');
+        process.env.GOOGLE_APPLICATION_CREDENTIALS = credPath;
         return serviceAccount.project_id;
     } catch (e) {
         console.error(e);

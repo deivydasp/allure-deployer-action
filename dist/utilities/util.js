@@ -3,6 +3,7 @@ import { StringBuilder } from "./string-builder.js";
 import process from "node:process";
 import { getRuntimeDirectory, readJsonFile } from "./file-util.js";
 import chalk from "chalk";
+import path from "node:path";
 export const ERROR_MESSAGES = {
     EMPTY_RESULTS: "Error: The specified results directory is empty.",
     NO_RESULTS_DIR: "Error: No Allure result files in the specified directory.",
@@ -75,9 +76,10 @@ export function getDashboardUrl({ projectId, storageBucket }) {
 export async function setGoogleCredentialsEnv(gcpJson) {
     try {
         const serviceAccount = JSON.parse(gcpJson);
-        const path = `${(await getRuntimeDirectory())}/credentials/key.json`;
-        await fs.writeFile(path, JSON.stringify(serviceAccount, null, 2), 'utf8');
-        process.env.GOOGLE_APPLICATION_CREDENTIALS = path;
+        const credPath = `${(await getRuntimeDirectory())}/credentials/key.json`;
+        await fs.mkdir(path.dirname(credPath), { recursive: true });
+        await fs.writeFile(credPath, JSON.stringify(serviceAccount, null, 2), 'utf8');
+        process.env.GOOGLE_APPLICATION_CREDENTIALS = credPath;
         return serviceAccount.project_id;
     }
     catch (e) {

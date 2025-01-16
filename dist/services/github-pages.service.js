@@ -8,8 +8,8 @@ import github from "@actions/github";
  */
 const DEFAULT_RETRY_CONFIG = {
     maxRetries: 3,
-    initialDelay: 1000,
-    maxDelay: 10000,
+    initialDelay: 1000, // 1 second
+    maxDelay: 10000, // 10 seconds
     backoffFactor: 2
 };
 /**
@@ -50,11 +50,11 @@ async function withRetry(operation, config = DEFAULT_RETRY_CONFIG) {
 function isRetryableError(error) {
     // GitHub API error status codes that are worth retrying
     const retryableStatusCodes = [
-        408,
-        429,
-        500,
-        502,
-        503,
+        408, // Request Timeout
+        429, // Too Many Requests
+        500, // Internal Server Error
+        502, // Bad Gateway
+        503, // Service Unavailable
         504 // Gateway Timeout
     ];
     return (error.status && retryableStatusCodes.includes(error.status) ||
