@@ -5,7 +5,7 @@ async function cleanupCredentials(filePath) {
         console.log('Credentials file cleaned up.');
     }
     catch (error) {
-        console.error('Failed to clean up credentials file:', error);
+        console.error('No credentials to cleanup');
     }
 }
 await cleanupCredentials('credentials/key.json');

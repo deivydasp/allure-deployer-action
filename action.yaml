@@ -10,13 +10,11 @@ runs:
   using: 'node20'
   main: "dist/index.js"
   post: "dist/utilities/cleanup.js"
-  post-if: ${{ inputs.google_credentials_json != '' }}
 
 inputs:
   google_credentials_json:
     description: "Set Firebase (Google Cloud) credentials for History, Retries and Firebase Hosting"
     required: false
-    default: ""
   storage_bucket:
     description: "A Google Cloud Storage bucket for managing Allure History and Retries"
     required: false
