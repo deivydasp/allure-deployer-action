@@ -2,6 +2,13 @@ name: Test Local Action
 on:
   workflow_dispatch:
     inputs:
+      job:
+        description: 'Job to run'
+        type: choice
+        options:
+          - test-local-gh-pages
+          - test-local-firebase
+        default: test-local-firebase
       retries:
         description: 'Number of test runs to show as retries in report'
         default: '10'
@@ -13,7 +20,8 @@ on:
         description: 'Title of the report'
         default: 'Allure Report'
 jobs:
-  test-local:
+  test-local-firebase:
+    if: ${{ github.event.inputs.job == 'test-local-firebase' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4.1.5
@@ -31,3 +39,22 @@ jobs:
           show_history: ${{github.event.inputs.show-history}}
           retries: ${{github.event.inputs.retries}}
           prefix: 'test-action-firebase'
+  test-local-gh-pages:
+    if: ${{ github.event.inputs.job == 'test-local-gh-pages' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4.1.5
+      - name: Deploy Reports to GitHub pages with History and Retries
+        uses: ./
+        with:
+          target: 'github'
+          google_credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+          github_pages_branch: 'gh-pages'
+          github_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          allure_results_path: 'allure-results'
+          storage_bucket: ${{secrets.STORAGE_BUCKET}}
+          show_history: ${{github.event.inputs.show-history}}
+          retries: ${{github.event.inputs.retries}}
+          prefix: 'test-action-gh-pages'
