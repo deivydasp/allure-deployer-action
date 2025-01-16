@@ -96,7 +96,7 @@ jobs:
 ## 🛠️ Inputs
 | Input                     | Description                                                                                                      | Required/Optional | Default          |
 |---------------------------|------------------------------------------------------------------------------------------------------------------|-------------------|------------------|
-| `allure_results_path`     | A `path/to/results` or comma separate paths (`path/to/results1`,`path/to/results2`) of Allure results.           | Required          | `allure-results` |
+| `allure_results_path`     | A `path/to/results` or comma separate paths '`path/to/results1`,`path/to/results2`' of Allure results.           | Required          | `allure-results` |
 | `target`                  | Where to deploy test Report. `firebase` or `github`. `github` requires `github_token`                            | Required          | `github`         |
 | `google_credentials_json` | Firebase (Google Cloud) credentials for History, Retries and Firebase Hosting                                    | Optional          | None             |
 | `github_token`            | A generated GITHUB_TOKEN or Personal Access Token for `pr_comment` and GitHub Pages                              | Optional          | None             |
