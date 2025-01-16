@@ -20,7 +20,7 @@ import {
     validateResultsPaths, getRuntimeDirectory, HostingProvider
 } from "allure-deployer-shared";
 import {Storage as GCPStorage} from '@google-cloud/storage'
-import {copyFiles, readJsonFile} from "./utilities/file-util.js";
+import {copyFiles} from "./utilities/file-util.js";
 import {GitHubService} from "./services/github.service.js";
 import path from "node:path";
 import {GitHubNotifier} from "./features/messaging/github-notifier.js";
@@ -117,7 +117,7 @@ async function initializeCloudStorage(args: ArgsInterface): Promise<Storage | un
     const storageBucket = getInput('storage_bucket');
     if (!storageBucket) return undefined;
     try {
-        const credentials = await readJsonFile(args.runtimeCredentialDir);
+        const credentials = JSON.parse(getInput('google_credentials_json', { required: true })!);
         const bucket = new GCPStorage({credentials}).bucket(storageBucket);
         const [exists] = await bucket.exists();
         if (!exists) {
