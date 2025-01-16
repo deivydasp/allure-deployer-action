@@ -58,6 +58,7 @@ export function main() {
             host =  new FirebaseHost(new FirebaseService(firebaseProjectId, REPORTS_DIR));
         }
         const inputs: ArgsInterface = {
+            storageBucket: getInput('storage_bucket'),
             runtimeCredentialDir: path.join(runtimeDir, 'credentials/key.json'),
             fileProcessingConcurrency: 10,
             RESULTS_PATHS: await validateResultsPaths(resultsPaths),
@@ -114,7 +115,7 @@ async function runDeploy(args: ArgsInterface) {
 
 // Initializes cloud storage and verifies the bucket existence
 async function initializeCloudStorage(args: ArgsInterface): Promise<Storage | undefined> {
-    const storageBucket = getInput('storage_bucket');
+    const storageBucket = args.storageBucket
     if (!storageBucket) return undefined;
     try {
         const credentials = JSON.parse(getInput('google_credentials_json', { required: true })!);
