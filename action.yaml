@@ -9,6 +9,7 @@ branding:
 runs:
   using: 'node20'
   main: "dist/index.js"
+  post: "dist/utilities/cleanup.js"
 
 inputs:
   google_credentials_json:
