@@ -1,9 +1,8 @@
 # Allure Deployer Action
-Host your Allure Reports on the web with History, Retries, Report Aggregation and Slack integration.
-No server required.
+Deploy Allure reports with every feature. History, Retries and Slack. No server required.
 </br>
 </br>
-Supports deployment to **Firebase Hosting** and **GitHub Pages**.
+Supports deployment to `Firebase Hosting` and `GitHub Pages`.
 </br>
 </br>
 Works on all latest Runners (`ubuntu-latest`, `macos-latest`, `windows-latest`) by default.
