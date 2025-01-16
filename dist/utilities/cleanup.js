@@ -1,4 +1,5 @@
 import { unlink } from 'fs/promises';
+import { GOOGLE_CREDENTIALS_PATH } from "./constants.js";
 async function cleanupCredentials(filePath) {
     try {
         await unlink(filePath);
@@ -8,4 +9,4 @@ async function cleanupCredentials(filePath) {
         console.error('No credentials to cleanup');
     }
 }
-await cleanupCredentials('credentials/key.json');
+await cleanupCredentials(GOOGLE_CREDENTIALS_PATH);

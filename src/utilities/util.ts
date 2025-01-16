@@ -1,8 +1,8 @@
 import * as fs from 'fs/promises'
 import process from "node:process";
-import chalk from "chalk";
 import {SlackConfig} from "allure-deployer-shared";
 import path from "node:path";
+import {GOOGLE_CREDENTIALS_PATH} from "./constants.js";
 
 type ServiceAccountJson = {
     "type": string,
@@ -23,7 +23,7 @@ export const ERROR_MESSAGES = {
     NO_RESULTS_DIR: "Error: No Allure result files in the specified directory.",
     MISSING_CREDENTIALS: "Error: Firebase/GCP credentials must be set using 'gcp-json:set' or provided via '--gcp-json'.",
     MISSING_BUCKET: "Storage bucket not provided. History and Retries will not be available in report.",
-    INVALID_SLACK_CRED: `Invalid Slack credential. ${chalk.blue('slack_channel')} and ${chalk.blue('slack_token')} must be provided together`,
+    INVALID_SLACK_CRED: `Invalid Slack credential. 'slack_channel' and 'slack_token' must be provided together`,
     NO_JAVA: 'Error: JAVA_HOME not found. Allure 2.32 requires JAVA runtime installed'
 };
 
@@ -31,7 +31,7 @@ export const ERROR_MESSAGES = {
 export async function setGoogleCredentialsEnv(gcpJson: string): Promise<string> {
     try {
         const serviceAccount =  JSON.parse(gcpJson) as ServiceAccountJson;
-        const credPath = 'credentials/key.json';
+        const credPath = GOOGLE_CREDENTIALS_PATH;
         await fs.mkdir(path.dirname(credPath), { recursive: true });
         await fs.writeFile(credPath, JSON.stringify(serviceAccount, null, 2), 'utf8');
         process.env.GOOGLE_APPLICATION_CREDENTIALS = credPath;
