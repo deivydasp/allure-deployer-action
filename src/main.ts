@@ -77,9 +77,10 @@ export function main() {
             REPORTS_DIR,
         });
 
+        const storageBucket = core.getInput("storage_bucket")
         const inputs: GitHubArgInterface = {
             googleCredentialData: googleCreds,
-            storageBucket: googleCreds ? core.getInput("storage_bucket") : undefined,
+            storageBucket: storageBucket !== '' ? storageBucket : undefined,
             runtimeCredentialDir: path.join(runtimeDir, "credentials/key.json"),
             fileProcessingConcurrency: 10,
             RESULTS_PATHS: await validateResultsPaths(resultsPaths),

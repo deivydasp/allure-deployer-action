@@ -6,9 +6,10 @@ on:
         description: 'Job to run'
         type: choice
         options:
-          - test-local-gh-pages
-          - test-local-firebase
-        default: test-local-firebase
+          - gh-pages
+          - firebase
+          - gh-pages-no-backup
+        default: firebase
       runner:
         description: Runner to use
         type: choice
@@ -19,7 +20,8 @@ on:
         default: ubuntu-latest
       retries:
         description: 'Number of test runs to show as retries in report'
-        default: '10'
+        type: number
+        default: 10
       show-history:
         description: 'Show keep history in report'
         type: boolean
@@ -28,8 +30,8 @@ on:
         description: 'Title of the report'
         default: 'Allure Report'
 jobs:
-  test-local-firebase:
-    if: ${{ github.event.inputs.job == 'test-local-firebase' }}
+  firebase:
+    if: ${{ github.event.inputs.job == 'firebase' }}
     runs-on: ${{ github.event.inputs.runner }}
     steps:
       - uses: actions/checkout@v4.1.5
@@ -47,8 +49,8 @@ jobs:
           show_history: ${{github.event.inputs.show-history}}
           retries: ${{github.event.inputs.retries}}
           prefix: 'test-action-firebase'
-  test-local-gh-pages:
-    if: ${{ github.event.inputs.job == 'test-local-gh-pages' }}
+  gh-pages:
+    if: ${{ github.event.inputs.job == 'gh-pages' }}
     runs-on: ${{ github.event.inputs.runner }}
     permissions:
       contents: write
@@ -66,3 +68,18 @@ jobs:
           show_history: ${{github.event.inputs.show-history}}
           retries: ${{github.event.inputs.retries}}
           prefix: 'test-action-gh-pages'
+
+  gh-pages-no-backup:
+    if: ${{ github.event.inputs.job == 'gh-pages-no-backup'}}
+    runs-on: ${{ github.event.inputs.runner }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4.1.5
+      - name: Deploy Reports to GitHub pages with History and Retries
+        uses: ./
+        with:
+          target: 'github'
+          github_pages_branch: 'gh-pages'
+          github_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          allure_results_path: 'allure-results'
