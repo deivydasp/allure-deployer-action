@@ -27,7 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4.1.5
       - name: Deploy Reports to Firebase with History and Retries
-        uses: cybersokari/allure-deployer-action@v1.4.2
+        uses: cybersokari/allure-deployer-action@v1.5.0
         with:
           target: 'firebase'
           google_credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
@@ -47,7 +47,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4.1.5
       - name: Deploy Reports to GitHub pages with History and Retries
-        uses: cybersokari/allure-deployer-action@v1.4.2
+        uses: cybersokari/allure-deployer-action@v1.5.0
         with:
           target: 'github'
           google_credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
