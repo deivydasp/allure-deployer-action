@@ -37,7 +37,7 @@ export function main() {
             host = new FirebaseHost(new FirebaseService(firebaseProjectId, REPORTS_DIR));
         }
         const inputs = {
-            runtimeCredentialDir: runtimeDir,
+            runtimeCredentialDir: path.join(runtimeDir, 'credentials/key.json'),
             fileProcessingConcurrency: 10,
             RESULTS_PATHS: await validateResultsPaths(resultsPaths),
             RESULTS_STAGING_PATH: path.join(runtimeDir, 'allure-results'),
