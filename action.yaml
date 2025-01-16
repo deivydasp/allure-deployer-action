@@ -7,8 +7,9 @@ branding:
   color: green
 
 runs:
-  using: "docker"
-  image: "docker://sokari/allure-deployer-action:1.4.3"
+  using: 'node20'
+  main: "dist/index.js"
+  post: "dist/utilities/cleanup.js"
 
 inputs:
   google_credentials_json:
