@@ -21,7 +21,7 @@ jobs:
           ref: 'javascript'
       - run: pwd && ls -R
       - name: Deploy Reports to Firebase with History and Retries
-        uses: ./action.yaml
+        uses: ./
         with:
           target: 'firebase'
           google_credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
