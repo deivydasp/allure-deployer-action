@@ -26,6 +26,6 @@ export class GitHubService implements GithubInterface {
         }
     }
     async updateSummary(message: string): Promise<void> {
-        core.summary.addRaw(message);
+        await core.summary.addRaw(message, true).write();
     }
 }
