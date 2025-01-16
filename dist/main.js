@@ -34,12 +34,18 @@ export function main() {
             firebaseProjectId = await setGoogleCredentialsEnv(googleCreds);
         }
         if (!firebaseProjectId && !token) {
-            core.setFailed("Requires either google_credentials_json or github_token.");
+            core.setFailed("Error: You must set either 'google_credentials_json' or 'github_token'.");
             return;
         }
         if (!["firebase", "github"].includes(target)) {
-            core.setFailed("Target must be either 'github' or 'firebase'.");
+            core.setFailed("Error: target must be either 'github' or 'firebase'.");
             return;
+        }
+        if (target === "github" && !token) {
+            core.setFailed("Github Pages require a 'github_token'.");
+        }
+        if (target === "firebase" && !googleCreds) {
+            core.setFailed("Firebase Hosting require a 'google_credentials_json'.");
         }
         const host = initializeHost({
             target,
@@ -139,11 +145,13 @@ async function generateAllureReport({ allure, reportUrl, args, }) {
 }
 function createExecutor(reportUrl) {
     const buildName = `GitHub Run ID: ${github.context.runId}`;
+    const buildNumber = github.context.runNumber;
     return {
         name: "Allure Report Deployer",
         reportUrl,
         buildUrl: createGitHubBuildUrl(),
         buildName,
+        buildOrder: buildNumber,
         type: "github",
     };
 }
