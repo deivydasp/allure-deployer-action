@@ -1,7 +1,7 @@
 import * as fs from 'fs/promises';
 import { StringBuilder } from "./string-builder.js";
 import process from "node:process";
-import { getRuntimeDirectory, readJsonFile } from "./file-util.js";
+import { readJsonFile } from "./file-util.js";
 import chalk from "chalk";
 import path from "node:path";
 export const ERROR_MESSAGES = {
@@ -76,7 +76,7 @@ export function getDashboardUrl({ projectId, storageBucket }) {
 export async function setGoogleCredentialsEnv(gcpJson) {
     try {
         const serviceAccount = JSON.parse(gcpJson);
-        const credPath = `${(await getRuntimeDirectory())}/credentials/key.json`;
+        const credPath = 'credentials/key.json';
         await fs.mkdir(path.dirname(credPath), { recursive: true });
         await fs.writeFile(credPath, JSON.stringify(serviceAccount, null, 2), 'utf8');
         process.env.GOOGLE_APPLICATION_CREDENTIALS = credPath;

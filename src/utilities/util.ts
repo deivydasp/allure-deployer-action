@@ -2,7 +2,7 @@ import * as fs from 'fs/promises'
 
 import {StringBuilder} from "./string-builder.js";
 import process from "node:process";
-import {getRuntimeDirectory, readJsonFile} from "./file-util.js";
+import {readJsonFile} from "./file-util.js";
 import {ServiceAccountJson} from "./google-credentials-helper.js";
 import chalk from "chalk";
 import {ReportStatistic, SlackConfig} from "allure-deployer-shared";
@@ -96,7 +96,7 @@ export interface WithOraParams<T> {
 export async function setGoogleCredentialsEnv(gcpJson: string): Promise<string> {
     try {
         const serviceAccount =  JSON.parse(gcpJson) as ServiceAccountJson;
-        const credPath = `${(await getRuntimeDirectory())}/credentials/key.json`;
+        const credPath = 'credentials/key.json';
         await fs.mkdir(path.dirname(credPath), { recursive: true });
         await fs.writeFile(credPath, JSON.stringify(serviceAccount, null, 2), 'utf8');
         process.env.GOOGLE_APPLICATION_CREDENTIALS = credPath;
