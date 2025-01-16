@@ -37,17 +37,16 @@ export async function setGoogleCredentialsEnv(gcpJson: string): Promise<string> 
         process.env.GOOGLE_APPLICATION_CREDENTIALS = credPath;
         return serviceAccount.project_id;
     } catch (e) {
-        console.error(e);
+        console.error('Error: Failed to set Google Credentials file',e);
         process.exit(1)
     }
 }
 
 
-export function validateSlackConfig(channel?: string, token?: string): SlackConfig | undefined {
+export function validateSlackConfig(channel: string, token: string): SlackConfig | undefined {
     // Check if only one of the variables is provided
     if ((channel && !token) || (!channel && token)) {
-        console.error(ERROR_MESSAGES.INVALID_SLACK_CRED);
-        process.exit(1); // Exit if partial inputs are provided
+        console.warn(ERROR_MESSAGES.INVALID_SLACK_CRED);
     }
     if(channel && token) {
         return {channel, token};

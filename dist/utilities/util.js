@@ -20,15 +20,14 @@ export async function setGoogleCredentialsEnv(gcpJson) {
         return serviceAccount.project_id;
     }
     catch (e) {
-        console.error(e);
+        console.error('Error: Failed to set Google Credentials file', e);
         process.exit(1);
     }
 }
 export function validateSlackConfig(channel, token) {
     // Check if only one of the variables is provided
     if ((channel && !token) || (!channel && token)) {
-        console.error(ERROR_MESSAGES.INVALID_SLACK_CRED);
-        process.exit(1); // Exit if partial inputs are provided
+        console.warn(ERROR_MESSAGES.INVALID_SLACK_CRED);
     }
     if (channel && token) {
         return { channel, token };

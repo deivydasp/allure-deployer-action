@@ -13,8 +13,8 @@ runs:
 
 inputs:
   google_credentials_json:
-    description: "Firebase (Google Cloud) credentials JSON"
-    required: true
+    description: "Set Firebase (Google Cloud) credentials for History, Retries and Firebase Hosting"
+    required: false
   storage_bucket:
     description: "A Google Cloud Storage bucket for managing Allure History and Retries"
     required: false
@@ -23,7 +23,8 @@ inputs:
     default: "Allure Report"
   target:
     description: "Set where to deploy test Report. firebase or github"
-    default: 'firebase'
+    default: 'github'
+    required: true
   slack_channel:
     description: "Slack channel ID for notifications (optional)"
     required: false
@@ -31,8 +32,9 @@ inputs:
     description: "Slack Token"
     required: false
   allure_results_path:
-    description: "Path to the directory containing Allure results"
+    description: "A path/to/results or comma separate paths (path/to/results1,path/to/results2) of Allure results."
     required: true
+    default: 'allure-results'
   retries:
     description: "Number of previous test runs to show as retries in new test report (Default 0)"
     default: '0'
@@ -46,10 +48,10 @@ inputs:
     description: "Post test report information as pull request comment. Requires `github_token` to be set with permission  "
     default: "false"
   output:
-    description: "A directory to generate Allure report into. Setting this value disables report hosting and Slack notification"
+    description: "A custom directory to generate Allure report into."
     required: false
   github_token:
-    description: "Set generated GITHUB_TOKEN for adding report info to pr as comment and deploying report to GitHub pages"
+    description: "Set generated GITHUB_TOKEN or Personal Access Token for pr_comment and deploying report to GitHub pages"
     required: false
   github_pages_branch:
     description: "Set target branch for Deploying test report to GitHub Pages"

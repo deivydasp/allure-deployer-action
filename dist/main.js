@@ -1,211 +1,184 @@
 import * as process from "node:process";
-// Import necessary modules and commands for the main program functionality
-import { Allure, ConsoleNotifier, GoogleStorageService, getDashboardUrl, NotificationData, SlackService, SlackNotifier, Storage, getReportStats, NotifyHandler, FirebaseHost, FirebaseService, validateResultsPaths, getRuntimeDirectory, copyFiles } from "allure-deployer-shared";
-import { Storage as GCPStorage } from '@google-cloud/storage';
-import { GitHubService } from "./services/github.service.js";
 import path from "node:path";
+import { Allure, ConsoleNotifier, GoogleStorageService, getDashboardUrl, NotificationData, SlackService, SlackNotifier, Storage, getReportStats, NotifyHandler, FirebaseHost, FirebaseService, validateResultsPaths, getRuntimeDirectory, copyFiles, } from "allure-deployer-shared";
+import { Storage as GCPStorage } from "@google-cloud/storage";
+import { GitHubService } from "./services/github.service.js";
 import { GitHubNotifier } from "./features/messaging/github-notifier.js";
 import { GithubPagesService } from "./services/github-pages.service.js";
 import { GithubHost } from "./features/hosting/github.host.js";
 import github from "@actions/github";
 import core from "@actions/core";
 import { setGoogleCredentialsEnv, validateSlackConfig } from "./utilities/util.js";
-function getInput(name, options) {
-    const input = core.getInput(name, options);
-    return input.trim();
+function getGoogleCredentials() {
+    const credentials = core.getInput("google_credentials_json");
+    if (!credentials) {
+        console.log("No Google Credentials found.");
+        return undefined;
+    }
+    return credentials;
 }
-// Entry point for the application
 export function main() {
     (async () => {
-        const creds = getInput('google_credentials_json', { required: true });
-        const firebaseProjectId = await setGoogleCredentialsEnv(creds);
-        const resultsPaths = getInput('allure_results_path', { required: true });
-        const showHistory = core.getBooleanInput('show_history');
-        const retries = parseInt(getInput('retries') || '0', 10);
+        const token = core.getInput("github_token");
+        const target = core.getInput("target");
+        const resultsPaths = core.getInput("allure_results_path", { required: true });
+        const showHistory = core.getBooleanInput("show_history");
+        const retries = parseInt(core.getInput("retries") || "0", 10);
         const runtimeDir = await getRuntimeDirectory();
-        const ghBranch = core.getInput('github_pages_branch');
-        const token = core.getInput('github_token');
-        const REPORTS_DIR = path.join(runtimeDir, 'allure-report');
-        let host;
-        if (token && ghBranch) {
-            const client = new GithubPagesService({ token, branch: ghBranch, filesDir: REPORTS_DIR });
-            host = new GithubHost(client, ghBranch);
+        const reportOutputPath = core.getInput("output");
+        const REPORTS_DIR = reportOutputPath !== '' ? reportOutputPath : path.join(runtimeDir, "allure-report");
+        const ghBranch = core.getInput("github_pages_branch");
+        const googleCreds = getGoogleCredentials();
+        let firebaseProjectId;
+        if (googleCreds) {
+            firebaseProjectId = await setGoogleCredentialsEnv(googleCreds);
         }
-        else {
-            host = new FirebaseHost(new FirebaseService(firebaseProjectId, REPORTS_DIR));
+        if (!firebaseProjectId && !token) {
+            core.setFailed("Requires either google_credentials_json or github_token.");
+            return;
         }
+        if (!["firebase", "github"].includes(target)) {
+            core.setFailed("Target must be either 'github' or 'firebase'.");
+            return;
+        }
+        const host = initializeHost({
+            target,
+            token,
+            ghBranch,
+            firebaseProjectId,
+            REPORTS_DIR,
+        });
         const inputs = {
-            storageBucket: getInput('storage_bucket'),
-            runtimeCredentialDir: path.join(runtimeDir, 'credentials/key.json'),
+            googleCredentialData: googleCreds,
+            storageBucket: googleCreds ? core.getInput("storage_bucket") : undefined,
+            runtimeCredentialDir: path.join(runtimeDir, "credentials/key.json"),
             fileProcessingConcurrency: 10,
             RESULTS_PATHS: await validateResultsPaths(resultsPaths),
-            RESULTS_STAGING_PATH: path.join(runtimeDir, 'allure-results'),
-            ARCHIVE_DIR: path.join(runtimeDir, 'archive'),
+            RESULTS_STAGING_PATH: path.join(runtimeDir, "allure-results"),
+            ARCHIVE_DIR: path.join(runtimeDir, "archive"),
             REPORTS_DIR,
-            reportName: getInput('report_name'),
+            reportName: core.getInput("report_name"),
             retries,
             showHistory,
-            prefix: getInput('prefix'),
+            prefix: core.getInput("prefix"),
             uploadRequired: showHistory || retries > 0,
             downloadRequired: showHistory || retries > 0,
             firebaseProjectId,
             host,
         };
-        const outputPath = getInput('output');
-        if (outputPath) {
-            await runGenerate(inputs);
-        }
-        else {
-            await runDeploy(inputs);
-        }
+        await executeDeployment(inputs);
     })();
 }
-async function runGenerate(args) {
+async function executeDeployment(inputs) {
     try {
-        const storage = await initializeCloudStorage(args); // Initialize storage bucket
-        await setupStaging(args, storage);
-        const allure = new Allure({ args });
-        await generateReport({ allure, args }); // Generate Allure report
-        const [resultsStats] = await finalize({ storage, args }); // Deploy report and artifacts
-        await notify(args, resultsStats); // Send deployment notifications
+        const storage = inputs.storageBucket && inputs.googleCredentialData
+            ? await initializeStorage(inputs)
+            : undefined;
+        const [reportUrl] = await stageDeployment(inputs, storage);
+        const allure = new Allure({ args: inputs });
+        await generateAllureReport({ allure, reportUrl, args: inputs });
+        const [resultsStats] = await finalizeDeployment({ args: inputs, storage });
+        await sendNotifications(inputs, resultsStats, reportUrl);
     }
     catch (error) {
         console.error("Deployment failed:", error);
-        process.exit(1); // Exit with error code
+        process.exit(1);
     }
 }
-// Executes the deployment process
-async function runDeploy(args) {
-    try {
-        const storage = await initializeCloudStorage(args); // Initialize storage bucket
-        const [reportUrl] = await setupStaging(args, storage);
-        const allure = new Allure({ args });
-        await generateReport({ allure, reportUrl, args }); // Generate Allure report
-        const [resultsStats] = await finalize({ args, storage }); // Deploy report and artifacts
-        await notify(args, resultsStats, reportUrl); // Send deployment notifications
+function initializeHost({ target, token, ghBranch, firebaseProjectId, REPORTS_DIR, }) {
+    if (token && ghBranch && target === "github") {
+        const client = new GithubPagesService({ token, branch: ghBranch, filesDir: REPORTS_DIR });
+        return new GithubHost(client, ghBranch);
     }
-    catch (error) {
-        console.error("Deployment failed:", error);
-        process.exit(1); // Exit with error code
+    else if (target === "firebase" && firebaseProjectId) {
+        return new FirebaseHost(new FirebaseService(firebaseProjectId, REPORTS_DIR));
     }
+    return undefined;
 }
-// Initializes cloud storage and verifies the bucket existence
-async function initializeCloudStorage(args) {
-    const storageBucket = args.storageBucket;
-    if (!storageBucket)
+async function initializeStorage(args) {
+    const { storageBucket, googleCredentialData } = args;
+    if (!googleCredentialData || !storageBucket)
         return undefined;
     try {
-        const credentials = JSON.parse(getInput('google_credentials_json', { required: true }));
+        const credentials = JSON.parse(googleCredentialData);
         const bucket = new GCPStorage({ credentials }).bucket(storageBucket);
         const [exists] = await bucket.exists();
         if (!exists) {
-            console.log(`Storage Bucket '${bucket}' does not exist. History and Retries will be disabled`);
+            console.log(`Storage Bucket '${bucket.name}' does not exist. History and retries will be disabled.`);
             return undefined;
         }
-        return new Storage(new GoogleStorageService(bucket, getInput('prefix')), args);
+        return new Storage(new GoogleStorageService(bucket, core.getInput("prefix")), args);
     }
     catch (error) {
         handleStorageError(error);
         throw error;
     }
 }
-// Prepares files and configurations for deployment
-async function setupStaging(args, storage) {
-    const copyResultsFiles = (async () => {
-        return await copyFiles({
-            from: args.RESULTS_PATHS,
-            to: args.RESULTS_STAGING_PATH,
-            concurrency: args.fileProcessingConcurrency
-        });
+async function stageDeployment(args, storage) {
+    console.log("Staging files...");
+    const copyResultsFiles = copyFiles({
+        from: args.RESULTS_PATHS,
+        to: args.RESULTS_STAGING_PATH,
+        concurrency: args.fileProcessingConcurrency,
     });
-    console.log('Staging files...');
-    const result = Promise.all([
-        args.host?.init(args.clean), // Initialize Firebase hosting site
-        copyResultsFiles(),
-        args.downloadRequired ? storage?.stageFilesFromStorage() : undefined, // Prepare cloud storage files
+    const result = await Promise.all([
+        args.host?.init(args.clean),
+        copyResultsFiles,
+        args.downloadRequired ? storage?.stageFilesFromStorage() : undefined,
     ]);
-    console.log('Files staged successfully');
+    console.log("Files staged successfully.");
     return result;
 }
-// Generates the Allure report with metadata
-async function generateReport({ allure, reportUrl, args }) {
+async function generateAllureReport({ allure, reportUrl, args, }) {
     const executor = args.host ? createExecutor(reportUrl) : undefined;
-    console.log('Generating Allure report...');
+    console.log("Generating Allure report...");
     const result = await allure.generate(executor);
-    console.log('Report generated successfully!');
+    console.log("Report generated successfully!");
     return result;
 }
 function createExecutor(reportUrl) {
     const buildName = `GitHub Run ID: ${github.context.runId}`;
     return {
-        name: 'Allure Report Deployer',
-        reportUrl: reportUrl,
+        name: "Allure Report Deployer",
+        reportUrl,
         buildUrl: createGitHubBuildUrl(),
-        buildName: buildName,
-        type: 'github',
+        buildName,
+        type: "github",
     };
 }
 function createGitHubBuildUrl() {
-    const context = github.context;
+    const { context } = github;
     return `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
 }
-// Deploys the report and associated artifacts
-async function finalize({ args, storage }) {
-    const start = () => {
-        if (args.host)
-            return 'Deploying report...';
-        if (storage)
-            return 'Uploading results and history...';
-        return 'Reading report statistic...';
-    };
-    const success = () => {
-        if (args.host)
-            return 'Report deployed successfully!';
-        if (storage)
-            return 'Results and history uploaded!';
-        return 'Statistics read completed!';
-    };
-    start();
+async function finalizeDeployment({ args, storage, }) {
+    console.log("Finalizing deployment...");
     const result = await Promise.all([
-        getReportStats(path.join(args.REPORTS_DIR, 'widgets/summary.json')),
-        args.host?.deploy(), // Deploy to Firebase hosting
-        storage?.uploadArtifacts(), // Upload artifacts to storage bucket
+        getReportStats(path.join(args.REPORTS_DIR, "widgets/summary.json")),
+        args.host?.deploy(),
+        storage?.uploadArtifacts(),
     ]);
-    success();
+    console.log("Deployment finalized.");
     return result;
 }
-// Sends notifications about deployment status
-async function notify(args, resultsStatus, reportUrl) {
+async function sendNotifications(args, resultsStats, reportUrl) {
     const notifiers = [new ConsoleNotifier(args)];
-    const slackChannel = core.getInput('slack_channel');
-    const slackToken = core.getInput('slack_token');
-    const slackConfig = validateSlackConfig(slackChannel, slackToken);
-    if (slackConfig) {
-        const slackClient = new SlackService(slackConfig);
+    const slackChannel = core.getInput("slack_channel");
+    const slackToken = core.getInput("slack_token");
+    if (validateSlackConfig(slackChannel, slackToken)) {
+        const slackClient = new SlackService({ channel: slackChannel, token: slackToken });
         notifiers.push(new SlackNotifier(slackClient, args));
     }
-    const dashboardUrl = () => {
-        return args.storageBucket ? getDashboardUrl({
-            storageBucket: args.storageBucket,
-            projectId: args.firebaseProjectId,
-        }) : undefined;
-    };
+    const dashboardUrl = args.storageBucket && args.firebaseProjectId
+        ? getDashboardUrl({ storageBucket: args.storageBucket, projectId: args.firebaseProjectId })
+        : undefined;
     notifiers.push(new GitHubNotifier(new GitHubService()));
-    const notificationData = new NotificationData(resultsStatus, reportUrl, dashboardUrl());
-    await new NotifyHandler(notifiers).sendNotifications(notificationData); // Send notifications via all configured notifiers
+    const notificationData = new NotificationData(resultsStats, reportUrl, dashboardUrl);
+    await new NotifyHandler(notifiers).sendNotifications(notificationData);
 }
-// Handles errors related to cloud storage
-export function handleStorageError(error) {
-    if (error.code === 403) {
-        console.error('Access denied. Please ensure that the Cloud Storage API is enabled and that your credentials have the necessary permissions.');
-    }
-    else if (error.code === 404) {
-        console.error('Bucket not found. Please verify that the bucket name is correct and that it exists.');
-    }
-    else if (error.message.includes('Invalid bucket name')) {
-        console.error('Invalid bucket name. Please ensure that the bucket name adheres to the naming guidelines.');
-    }
-    else {
-        console.error('An unexpected error occurred:', error);
-    }
+function handleStorageError(error) {
+    const errorMessage = {
+        403: "Access denied. Ensure the Cloud Storage API is enabled and credentials have proper permissions.",
+        404: "Bucket not found. Verify the bucket name and its existence.",
+    };
+    console.error(errorMessage[error.code] || `An unexpected error occurred: ${error.message}`);
 }
