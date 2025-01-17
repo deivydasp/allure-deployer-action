@@ -1,5 +1,5 @@
 name: "Allure Deployer Action"
-description: "Host your Allure Reports on the web, with history, retries, and Slack integration, No server required"
+description: "Deploy Allure reports with every feature you want. History, Retries, Aggregation and Slack."
 author: "Sokari Gillis-Harry"
 
 branding:
