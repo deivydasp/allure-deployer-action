@@ -18,7 +18,7 @@ export class GitHubService implements GithubInterface {
                 owner: github.context.repo.owner,
                 repo: github.context.repo.repo,
                 issue_number: prNumber,
-                body: message.trim(),
+                body: message,
             });
             console.log(`Pull Request #${prNumber} updated successfully!`);
         } catch (e) {

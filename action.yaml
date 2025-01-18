@@ -34,7 +34,6 @@ inputs:
   allure_results_path:
     description: "A path/to/results or comma separate paths (path/to/results1,path/to/results2) of Allure results."
     required: true
-    default: 'allure-results'
   retries:
     description: "Number of previous test runs to show as retries in new test report (Default 0)"
     default: '0'
@@ -46,7 +45,7 @@ inputs:
     required: false
   pr_comment:
     description: "Post test report information as pull request comment. Requires `github_token` to be set with permission  "
-    default: "false"
+    default: "true"
   output:
     description: "A custom directory to generate Allure report into."
     required: false
