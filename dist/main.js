@@ -35,11 +35,9 @@ export function main() {
         }
         if (!firebaseProjectId && !token) {
             core.setFailed("Error: You must set either 'google_credentials_json' or 'github_token'.");
-            return;
         }
         if (!["firebase", "github"].includes(target)) {
             core.setFailed("Error: target must be either 'github' or 'firebase'.");
-            return;
         }
         if (target === "github" && !token) {
             core.setFailed("Github Pages require a 'github_token'.");
@@ -76,16 +74,16 @@ export function main() {
         await executeDeployment(inputs);
     })();
 }
-async function executeDeployment(inputs) {
+async function executeDeployment(args) {
     try {
-        const storage = inputs.storageBucket && inputs.googleCredentialData
-            ? await initializeStorage(inputs)
+        const storage = args.storageBucket && args.googleCredentialData
+            ? await initializeStorage(args)
             : undefined;
-        const [reportUrl] = await stageDeployment(inputs, storage);
-        const allure = new Allure({ args: inputs });
-        await generateAllureReport({ allure, reportUrl, args: inputs });
-        const [resultsStats] = await finalizeDeployment({ args: inputs, storage });
-        await sendNotifications(inputs, resultsStats, reportUrl);
+        const [reportUrl] = await stageDeployment(args, storage);
+        const allure = new Allure({ args });
+        await generateAllureReport({ allure, reportUrl });
+        const [resultsStats] = await finalizeDeployment({ args, storage });
+        await sendNotifications(args, resultsStats, reportUrl);
     }
     catch (error) {
         console.error("Deployment failed:", error);
@@ -111,7 +109,7 @@ async function initializeStorage(args) {
         const bucket = new GCPStorage({ credentials }).bucket(storageBucket);
         const [exists] = await bucket.exists();
         if (!exists) {
-            console.log(`Storage Bucket '${bucket.name}' does not exist. History and retries will be disabled.`);
+            console.log(`GCP storage bucket '${bucket.name}' does not exist. History and Retries will be disabled.`);
             return undefined;
         }
         return new Storage(new GoogleStorageService(bucket, core.getInput("prefix")), args);
@@ -136,10 +134,9 @@ async function stageDeployment(args, storage) {
     console.log("Files staged successfully.");
     return result;
 }
-async function generateAllureReport({ allure, reportUrl, args, }) {
-    const executor = args.host ? createExecutor(reportUrl) : undefined;
+async function generateAllureReport({ allure, reportUrl, }) {
     console.log("Generating Allure report...");
-    const result = await allure.generate(executor);
+    const result = await allure.generate(createExecutor(reportUrl));
     console.log("Report generated successfully!");
     return result;
 }
@@ -177,10 +174,14 @@ async function sendNotifications(args, resultsStats, reportUrl) {
         const slackClient = new SlackService({ channel: slackChannel, token: slackToken });
         notifiers.push(new SlackNotifier(slackClient, args));
     }
-    const dashboardUrl = args.storageBucket && args.firebaseProjectId
+    const dashboardUrl = process.env.DEBUG === 'true' && args.storageBucket && args.firebaseProjectId
         ? getDashboardUrl({ storageBucket: args.storageBucket, projectId: args.firebaseProjectId })
         : undefined;
-    notifiers.push(new GitHubNotifier(new GitHubService()));
+    const githubNotifierClient = new GitHubService();
+    const token = core.getInput("github_token");
+    const prNumber = github.context.payload.pull_request?.number;
+    const prComment = core.getBooleanInput("pr_comment");
+    notifiers.push(new GitHubNotifier({ client: githubNotifierClient, token, prNumber, prComment }));
     const notificationData = new NotificationData(resultsStats, reportUrl, dashboardUrl);
     await new NotifyHandler(notifiers).sendNotifications(notificationData);
 }

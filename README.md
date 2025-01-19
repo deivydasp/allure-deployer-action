@@ -10,12 +10,35 @@ Host Allure reports on the web with all its features. History, Retries, Report A
 - `ubuntu-latest`
 - `macos-latest`
 - `windows-latest`  
+
 If you’re using self-hosted runners, ensure you have a Java environment set up.
 
   
 ## Example 1: Deploy to GitHub Pages
 
-Publish reports to GitHub pages while enabling history and retries:
+```yaml
+jobs:
+  gh-pages:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4.1.5
+      - name: Run test
+        run: #Run test and create allure results
+      - name: Deploy Reports to GitHub pages
+        uses: cybersokari/allure-deployer-action@v1.5.1
+        with:
+          target: 'github'
+          github_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          github_pages_branch: 'gh-pages'
+          allure_results_path: 'allure-results'
+```
+Example test run: [actions/runs/12783827755](https://github.com/cybersokari/allure-deployer-action/actions/runs/12783827755)
+
+---
+
+## Example 2: Deploy to GitHub Pages with History and Retries
 
 ```yaml
 jobs:
@@ -34,16 +57,15 @@ jobs:
           github_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
           github_pages_branch: 'gh-pages'
           allure_results_path: 'allure-results'
-          google_credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }} # Required for History and Retries
-          storage_bucket: ${{vars.STORAGE_BUCKET}}
+          storage_bucket: ${{vars.STORAGE_BUCKET}} # Required for History and Retries
+          google_credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }} # Required Storage bucket
           show_history: 'true'
           retries: 5
 ```
-Example test run: [actions/runs/12783827755](https://github.com/cybersokari/allure-deployer-action/actions/runs/12783827755)
 
 ---
 
-## Example 2: Deploy to Firebase Hosting
+## Example 3: Deploy to Firebase Hosting
 
 Publish reports to Firebase Hosting while enabling history and retries:
 ```yaml
@@ -68,7 +90,7 @@ Example test run: [actions/runs/12783830022](https://github.com/cybersokari/allu
 
 ___
 
-## Example 3: Deploy on Pull Request
+## Example 4: Deploy on Pull Request
 
 Add comments with test report URL directly on pull requests:
 ```yaml
@@ -126,7 +148,7 @@ jobs:
 | Name                      | Description                                                                           | Default Value    | Required? |
 |---------------------------|---------------------------------------------------------------------------------------|------------------|-----------|
 | `allure_results_path`     | Path(s) to Allure results. Separate multiple paths with commas.                       | `allure-results` | Yes       |
-| `target`                  | Deployment target: `firebase` or `github`.                                            | `github`         | Yes       |
+| `target`                  | Deployment target: `firebase` or `github`.                                            | None             | Yes       |
 | `google_credentials_json` | Firebase credentials to enable **History**, **Retries**, and **Firebase Hosting**.    | None             | No        |
 | `github_token`            | GitHub token or personal access token to enable GitHub pages hosting and `pr_comment` | None             | No        |
 | `report_name`             | Custom name/title for the report.                                                     | `Allure Report`  | No        |

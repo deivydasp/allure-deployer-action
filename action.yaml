@@ -1,5 +1,5 @@
 name: "Allure Deployer Action"
-description: "Deploy Allure reports with every feature you want. History, Retries, Aggregation and Slack."
+description: "Deploy Allure reports with History, Retries, Aggregation and Slack integration"
 author: "Sokari Gillis-Harry"
 
 branding:
@@ -19,11 +19,10 @@ inputs:
     description: "A Google Cloud Storage bucket for managing Allure History and Retries"
     required: false
   report_name:
-    description: "Name/Title of your report"
+    description: "Title of your report"
     default: "Allure Report"
   target:
-    description: "Set where to deploy test Report. firebase or github"
-    default: 'github'
+    description: "Deployment target: firebase or github"
     required: true
   slack_channel:
     description: "Slack channel ID for notifications (optional)"

@@ -3,65 +3,7 @@ import pLimit from "p-limit";
 import fs from "fs";
 import path from "node:path";
 import github from "@actions/github";
-/**
- * Default retry configuration
- */
-const DEFAULT_RETRY_CONFIG = {
-    maxRetries: 3,
-    initialDelay: 1000, // 1 second
-    maxDelay: 10000, // 10 seconds
-    backoffFactor: 2
-};
-/**
- * Utility function to implement retry logic with exponential backoff
- * @param operation - Function to retry
- * @param config - Retry configuration
- * @returns Result of the operation
- */
-async function withRetry(operation, config = DEFAULT_RETRY_CONFIG) {
-    let lastError = null;
-    let delay = config.initialDelay;
-    for (let attempt = 1; attempt <= config.maxRetries; attempt++) {
-        try {
-            return await operation();
-        }
-        catch (error) {
-            lastError = error;
-            // Don't retry if it's not a retryable error
-            if (!isRetryableError(error)) {
-                throw error;
-            }
-            // If this was our last attempt, throw the error
-            if (attempt === config.maxRetries) {
-                throw new Error(`Failed after ${config.maxRetries} attempts. Last error: ${lastError?.message || "Unknown error"}`);
-            }
-            // Wait before retrying
-            await new Promise(resolve => setTimeout(resolve, delay));
-            // Calculate next delay with exponential backoff
-            delay = Math.min(delay * config.backoffFactor, config.maxDelay);
-            console.warn(`Attempt ${attempt} failed. Retrying in ${delay}ms. Error: ${error.message}`);
-        }
-    }
-    throw lastError; // TypeScript needs this
-}
-/**
- * Determines if an error is retryable based on its status code
- */
-function isRetryableError(error) {
-    // GitHub API error status codes that are worth retrying
-    const retryableStatusCodes = [
-        408, // Request Timeout
-        429, // Too Many Requests
-        500, // Internal Server Error
-        502, // Bad Gateway
-        503, // Service Unavailable
-        504 // Gateway Timeout
-    ];
-    return (error.status && retryableStatusCodes.includes(error.status) ||
-        error.message?.includes('rate limit') ||
-        error.message?.includes('timeout') ||
-        error.message?.includes('network error'));
-}
+import { DEFAULT_RETRY_CONFIG, withRetry } from "../utilities/util.js";
 export class GithubPagesService {
     constructor({ branch, filesDir, retryConfig = DEFAULT_RETRY_CONFIG, token }) {
         this.octokit = new Octokit({ auth: token });
