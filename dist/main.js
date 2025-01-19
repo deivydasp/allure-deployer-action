@@ -142,13 +142,12 @@ async function generateAllureReport({ allure, reportUrl, }) {
 }
 function createExecutor(reportUrl) {
     const buildName = `GitHub Run ID: ${github.context.runId}`;
-    const buildNumber = github.context.runNumber;
     return {
-        name: "Allure Report Deployer",
+        name: "Allure Deployer Action",
         reportUrl,
         buildUrl: createGitHubBuildUrl(),
         buildName,
-        buildOrder: buildNumber,
+        buildOrder: github.context.runNumber,
         type: "github",
     };
 }
