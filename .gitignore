@@ -1,3 +1,4 @@
 .idea
 allure-deployer-action.iml
 .env
+allure-report
