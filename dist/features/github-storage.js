@@ -145,7 +145,7 @@ export class GithubStorage {
             resultPath = path.join(os.tmpdir(), 'allure-deployer-results-temp');
             await copyFiles({ from: this.args.RESULTS_PATHS, to: resultPath });
         }
-        await this.provider.upload(resultPath, `${Date.now()}.zip`);
+        await this.provider.upload(resultPath, `${Date.now()}`);
         await fs.rmdir(resultPath);
     }
     /**

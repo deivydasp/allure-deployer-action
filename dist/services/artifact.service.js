@@ -55,7 +55,7 @@ export class ArtifactService {
         }
         return await Promise.all(promises);
     }
-    async getFiles({ matchGlob, order, maxResults, endOffset }) {
+    async getFiles({ matchGlob, order = Order.byOldestToNewest, maxResults, endOffset }) {
         const octokit = new Octokit({ auth: this.token });
         const response = await octokit.request('GET /repos/{owner}/{repo}/actions/artifacts', {
             owner: github.context.repo.owner,
@@ -66,13 +66,13 @@ export class ArtifactService {
                 'X-GitHub-Api-Version': '2022-11-28'
             }
         });
-        return order ? this.sortFiles(response.data.artifacts, order) : response.data.artifacts;
+        const files = response.data.artifacts.filter(file => file.created_at && !file.expired);
+        return this.sortFiles(files, order);
     }
     sortFiles(files, order) {
         if (!files || files.length < 2) {
             return files;
         }
-        files = files.filter(file => file.created_at);
         return files.sort((a, b) => {
             const aTime = new Date(a.created_at).getTime();
             const bTime = new Date(b.created_at).getTime();
@@ -81,6 +81,6 @@ export class ArtifactService {
     }
     async upload(filePath, destination) {
         const files = getAbsoluteFilePaths(filePath);
-        await this.artifactClient.uploadArtifact(path.basename(destination), files, filePath);
+        await this.artifactClient.uploadArtifact(destination, files, filePath);
     }
 }
