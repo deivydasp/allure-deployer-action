@@ -150,8 +150,7 @@ export class GithubStorage {
             resultPath = path.join(os.tmpdir(), 'allure-deployer-results-temp');
             await copyFiles({ from: this.args.RESULTS_PATHS, to: resultPath });
         }
-        await this.provider.upload(resultPath, `${Date.now()}`);
-        await fs.rmdir(resultPath);
+        await this.provider.upload(resultPath, Date.now().toString());
     }
     /**
      * Zips and uploads the history archive to the remote storage.
