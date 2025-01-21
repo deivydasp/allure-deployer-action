@@ -12,15 +12,17 @@
   },
   "type": "module",
   "dependencies": {
+    "@actions/artifact": "^2.2.1",
     "@actions/core": "^1.11.1",
     "@actions/github": "^6.0.0",
     "@octokit/rest": "^21.1.0",
-    "allure-deployer-shared": "1.1.6"
+    "allure-deployer-shared": "1.1.8"
   },
   "devDependencies": {
     "@types/chai": "^5.0.1",
     "@types/jest": "^29.5.14",
     "@types/mock-fs": "^4.13.4",
+    "@types/unzipper": "^0.10.10",
     "@typescript-eslint/eslint-plugin": "^8.17.0",
     "@typescript-eslint/parser": "^8.17.0",
     "allure-jest": "^3.0.7",

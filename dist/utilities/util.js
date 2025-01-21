@@ -1,4 +1,5 @@
 import * as fs from 'fs/promises';
+import * as fsSync from 'fs';
 import process from "node:process";
 import path from "node:path";
 import { GOOGLE_CREDENTIALS_PATH } from "./constants.js";
@@ -39,8 +40,8 @@ export function validateSlackConfig(channel, token) {
  */
 export const DEFAULT_RETRY_CONFIG = {
     maxRetries: 3,
-    initialDelay: 1000, // 1 second
-    maxDelay: 10000, // 10 seconds
+    initialDelay: 1000,
+    maxDelay: 10000,
     backoffFactor: 2
 };
 /**
@@ -49,11 +50,11 @@ export const DEFAULT_RETRY_CONFIG = {
 export function isRetryableError(error) {
     // GitHub API error status codes that are worth retrying
     const retryableStatusCodes = [
-        408, // Request Timeout
-        429, // Too Many Requests
-        500, // Internal Server Error
-        502, // Bad Gateway
-        503, // Service Unavailable
+        408,
+        429,
+        500,
+        502,
+        503,
         504 // Gateway Timeout
     ];
     return (error.status && retryableStatusCodes.includes(error.status) ||
@@ -92,4 +93,22 @@ export async function withRetry(operation, config = DEFAULT_RETRY_CONFIG) {
         }
     }
     throw lastError; // TypeScript needs this
+}
+// Function to recursively read absolute file paths in a directory
+export function getAbsoluteFilePaths(dir) {
+    const filesAndDirs = fsSync.readdirSync(dir); // Read directory contents
+    const filePaths = []; // To store absolute file paths
+    for (const entry of filesAndDirs) {
+        const fullPath = path.resolve(dir, entry); // Resolve to absolute path
+        const stats = fsSync.statSync(fullPath);
+        if (stats.isDirectory()) {
+            // If entry is a directory, recurse into it
+            filePaths.push(...getAbsoluteFilePaths(fullPath));
+        }
+        else if (stats.isFile()) {
+            // If entry is a file, add its absolute path to the list
+            filePaths.push(fullPath);
+        }
+    }
+    return filePaths;
 }

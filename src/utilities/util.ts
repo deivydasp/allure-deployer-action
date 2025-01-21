@@ -1,4 +1,5 @@
 import * as fs from 'fs/promises'
+import * as fsSync from 'fs'
 import process from "node:process";
 import {SlackConfig} from "allure-deployer-shared";
 import path from "node:path";
@@ -140,6 +141,27 @@ export async function withRetry<T>(
     }
 
     throw lastError; // TypeScript needs this
+}
+
+// Function to recursively read absolute file paths in a directory
+export function getAbsoluteFilePaths(dir: string): string[] {
+    const filesAndDirs = fsSync.readdirSync(dir); // Read directory contents
+    const filePaths: string[] = []; // To store absolute file paths
+
+    for (const entry of filesAndDirs) {
+        const fullPath = path.resolve(dir, entry); // Resolve to absolute path
+        const stats = fsSync.statSync(fullPath);
+
+        if (stats.isDirectory()) {
+            // If entry is a directory, recurse into it
+            filePaths.push(...getAbsoluteFilePaths(fullPath));
+        } else if (stats.isFile()) {
+            // If entry is a file, add its absolute path to the list
+            filePaths.push(fullPath);
+        }
+    }
+
+    return filePaths;
 }
 
 
