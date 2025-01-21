@@ -106,7 +106,7 @@ jobs:
       - uses: actions/checkout@v4.1.5
       - name: Run test
         run: #Run test and create allure results
-      - name: Deploy Reports to Firebase with History and Retries
+      - name: Deploy Reports to Firebase on Pull Request
         uses: cybersokari/allure-deployer-action@v1.5.1
         with:
           pr_comment: 'true'
@@ -120,7 +120,7 @@ jobs:
 ```
 ---
 
-## Example 4: Aggregate report from multiple Allure results directories
+## Example 5: Aggregate report from multiple Allure results directories
 
 ```yaml
 jobs:

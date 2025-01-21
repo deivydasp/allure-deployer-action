@@ -217,7 +217,7 @@ async function finalizeDeployment({
 }) {
     console.log("Finalizing deployment...");
     const result = await Promise.all([
-        getReportStats(path.join(args.REPORTS_DIR, "widgets/summary.json")),
+        getReportStats(args.REPORTS_DIR),
         args.host?.deploy(),
         storage?.uploadArtifacts(),
     ]);
