@@ -100,7 +100,7 @@ export class GithubStorage {
         let files = await this.provider.getFiles({
             order: Order.byOldestToNewest,
         });
-        // Remove history archive
+        // Remove non-results archives
         files = files.filter(this.isResultsArchive);
         if (files.length === 0)
             return;

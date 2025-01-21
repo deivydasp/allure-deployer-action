@@ -20,15 +20,11 @@ export class GitHubNotifier implements Notifier {
 
     async notify(data: NotificationData): Promise<void> {
 
-        let message = "### 📊 Your Test Report is ready\n\n";
-
+        let message = "";
         if (data.reportUrl) {
-            message += `- **Test Report**: [${data.reportUrl}](${data.reportUrl})\n`;
+            message += `**📊 Test Report**: [${data.reportUrl}](${data.reportUrl})\n`;
         }
 
-        if (data.storageUrl) {
-            message += `- **File Storage**: [${data.storageUrl}](${data.storageUrl})\n`;
-        }
         const passed = data.resultStatus.passed;
         const broken = data.resultStatus.broken;
         const skipped = data.resultStatus.skipped;
@@ -40,6 +36,8 @@ export class GitHubNotifier implements Notifier {
 |-----------|------------------|---------------|---------------|---------------|
 | ${passed} | ${broken}        | ${skipped}    | ${failed}     | ${unknown}|
     `;
+
+        message += `\n\nA [star](https://github.com/cybersokari/allure-deployer-action) from you would be nice`;
         const promises: Promise<void>[] = [];
         if (data.reportUrl) {
             promises.push(this.client.updateOutput({name: 'report_url', value: data.reportUrl}))

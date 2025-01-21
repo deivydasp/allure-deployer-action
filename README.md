@@ -26,30 +26,6 @@ jobs:
       - uses: actions/checkout@v4.1.5
       - name: Run test
         run: #Run test and create allure results
-      - name: Deploy Reports to GitHub pages
-        uses: cybersokari/allure-deployer-action@v1.5.1
-        with:
-          target: 'github'
-          github_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
-          github_pages_branch: 'gh-pages'
-          allure_results_path: 'allure-results'
-```
-Example test run: [actions/runs/12783827755](https://github.com/cybersokari/allure-deployer-action/actions/runs/12783827755)
-
----
-
-## Example 2: Deploy to GitHub Pages with History and Retries
-
-```yaml
-jobs:
-  gh-pages:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4.1.5
-      - name: Run test
-        run: #Run test and create allure results
       - name: Deploy Reports to GitHub pages with History and Retries
         uses: cybersokari/allure-deployer-action@v1.5.1
         with:
@@ -57,15 +33,14 @@ jobs:
           github_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
           github_pages_branch: 'gh-pages'
           allure_results_path: 'allure-results'
-          storage_bucket: ${{vars.STORAGE_BUCKET}} # Required for History and Retries
-          google_credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }} # Required Storage bucket
           show_history: 'true'
           retries: 5
 ```
+Example test run: [actions/runs/12783827755](https://github.com/cybersokari/allure-deployer-action/actions/runs/12783827755)
 
 ---
 
-## Example 3: Deploy to Firebase Hosting
+## Example 2: Deploy to Firebase Hosting
 
 Publish reports to Firebase Hosting while enabling history and retries:
 ```yaml
@@ -90,7 +65,7 @@ Example test run: [actions/runs/12783830022](https://github.com/cybersokari/allu
 
 ___
 
-## Example 4: Deploy on Pull Request
+## Example 3: Deploy on Pull Request
 
 Add comments with test report URL directly on pull requests:
 ```yaml
@@ -120,7 +95,7 @@ jobs:
 ```
 ---
 
-## Example 5: Aggregate report from multiple Allure results directories
+## Example 4: Aggregate report from multiple Allure results directories
 
 ```yaml
 jobs:
@@ -142,25 +117,49 @@ jobs:
 ```
 ---
 
+## Example 5: Deploy and notify in Slack
+
+```yaml
+jobs:
+  aggregate-allure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.1.5
+      - name: Run test in project
+        run: # Run test and create allure results directory
+      - name: Deploy Report, notify Slack
+        uses: cybersokari/allure-deployer-action@v1.5.1
+        with:
+          target: 'github'
+          github_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          github_pages_branch: 'gh-pages'
+          allure_results_path: 'allure-results'
+          show_history: 'true'
+          retries: 5
+          slack_channel: ${{ secrets.SLACK_CHANNEL }}
+          slack_token: ${{ secrets.SLACK_TOKEN }}
+```
+---
+
 
 ## Configuration Options (Inputs)
 
-| Name                      | Description                                                                           | Default Value    | Required? |
-|---------------------------|---------------------------------------------------------------------------------------|------------------|-----------|
-| `allure_results_path`     | Path(s) to Allure results. Separate multiple paths with commas.                       | `allure-results` | Yes       |
-| `target`                  | Deployment target: `firebase` or `github`.                                            | None             | Yes       |
-| `google_credentials_json` | Firebase credentials to enable **History**, **Retries**, and **Firebase Hosting**.    | None             | No        |
-| `github_token`            | GitHub token or personal access token to enable GitHub pages hosting and `pr_comment` | None             | No        |
-| `report_name`             | Custom name/title for the report.                                                     | `Allure Report`  | No        |
-| `storage_bucket`          | Google Cloud Storage bucket name for **History** and **Retries** backup.              | None             | No        |
-| `prefix`                  | Path prefix for archived files in the storage bucket.                                 | None             | No        |
-| `show_history`            | Display history from previous runs.                                                   | `true`           | No        |
-| `retries`                 | Number of previous runs to display as retries.                                        | 0                | No        |
-| `output`                  | Directory to generate the Allure report in.                                           | None             | No        |
-| `slack_channel`           | Slack channel ID for report notifications.                                            | None             | No        |
-| `slack_token`             | Slack app token for sending notifications.                                            | None             | No        |
-| `pr_comment`              | Post report information as a pull request comment.                                    | `true`           | No        |
-| `github_pages_branch`     | Branch used for GitHub Pages deployments.                                             | `gh-pages`       | No        |
+| Name                      | Description                                                                                 | Default Value    | Required? |
+|---------------------------|---------------------------------------------------------------------------------------------|------------------|-----------|
+| `allure_results_path`     | Path(s) to Allure results. Separate multiple paths with commas.                             | `allure-results` | Yes       |
+| `target`                  | Deployment target: `firebase` or `github`.                                                  | None             | Yes       |
+| `google_credentials_json` | Firebase credentials to enable **History**, **Retries**, and **Firebase Hosting**.          | None             | No        |
+| `github_token`            | GitHub token or personal access token to enable GitHub pages hosting and `pr_comment`       | None             | No        |
+| `report_name`             | Custom name/title for the report.                                                           | `Allure Report`  | No        |
+| `storage_bucket`          | Google Cloud Storage bucket name for **History** and **Retries** when target is `firebase`. | None             | No        |
+| `prefix`                  | Path prefix for archived files in the storage bucket.                                       | None             | No        |
+| `show_history`            | Display history from previous runs.                                                         | `true`           | No        |
+| `retries`                 | Number of previous runs to display as retries.                                              | 0                | No        |
+| `output`                  | Directory to generate the Allure report in.                                                 | None             | No        |
+| `slack_channel`           | Slack channel ID for report notifications.                                                  | None             | No        |
+| `slack_token`             | Slack app token for sending notifications.                                                  | None             | No        |
+| `pr_comment`              | Post report information as a pull request comment.                                          | `true`           | No        |
+| `github_pages_branch`     | Branch used for GitHub Pages deployments.                                                   | `gh-pages`       | No        |
 
 
 ## Outputs
