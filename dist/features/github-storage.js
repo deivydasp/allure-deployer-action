@@ -5,7 +5,7 @@ import pLimit from "p-limit";
 import * as os from "node:os";
 import fsSync from "fs";
 import unzipper from "unzipper";
-const HISTORY_ARCHIVE_NAME = "last-history.zip";
+const HISTORY_ARCHIVE_NAME = "last-history";
 export class GithubStorage {
     constructor(provider, args) {
         this.provider = provider;
@@ -89,6 +89,9 @@ export class GithubStorage {
         await fs.mkdir(stagingDir, { recursive: true });
         await this.unzipToStaging(downloadedPath, stagingDir);
     }
+    isResultsArchive(file) {
+        return /^\d{13}$/.test(file.name) && file.name !== HISTORY_ARCHIVE_NAME;
+    }
     /**
      * Stages the result files and deletes older files exceeding the retry limit.
      * @param retries - Maximum number of files to keep.
@@ -98,7 +101,9 @@ export class GithubStorage {
             order: Order.byOldestToNewest,
         });
         // Remove history archive
-        files = files.filter((file) => file.name !== HISTORY_ARCHIVE_NAME);
+        files = files.filter(this.isResultsArchive);
+        if (files.length === 0)
+            return;
         const limit = pLimit(this.args.fileProcessingConcurrency);
         const tasks = [];
         if (files.length > retries) {

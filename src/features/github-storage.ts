@@ -3,12 +3,12 @@ import path from "node:path";
 import {GitHubArgInterface} from "../interfaces/args.interface.js";
 import fs from "fs/promises";
 import pLimit from "p-limit";
-import {ArtifactService} from "../services/artifact.service.js";
+import {ArtifactResponse, ArtifactService} from "../services/artifact.service.js";
 import * as os from "node:os";
 import fsSync from "fs";
 import unzipper, {Entry} from "unzipper";
 
-const HISTORY_ARCHIVE_NAME = "last-history.zip";
+const HISTORY_ARCHIVE_NAME = "last-history";
 export class GithubStorage implements IStorage {
 
     constructor(private readonly provider: ArtifactService, readonly args: GitHubArgInterface) {
@@ -97,6 +97,10 @@ export class GithubStorage implements IStorage {
         await this.unzipToStaging(downloadedPath, stagingDir);
     }
 
+    private isResultsArchive(file: ArtifactResponse): boolean {
+        return /^\d{13}$/.test(file.name) && file.name !== HISTORY_ARCHIVE_NAME
+    }
+
     /**
      * Stages the result files and deletes older files exceeding the retry limit.
      * @param retries - Maximum number of files to keep.
@@ -106,7 +110,8 @@ export class GithubStorage implements IStorage {
             order: Order.byOldestToNewest,
         });
         // Remove history archive
-        files = files.filter((file) => file.name !== HISTORY_ARCHIVE_NAME)
+        files = files.filter(this.isResultsArchive)
+        if(files.length === 0) return
 
         const limit = pLimit(this.args.fileProcessingConcurrency);
         const tasks: Promise<void>[] = [];
