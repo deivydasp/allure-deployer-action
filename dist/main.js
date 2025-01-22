@@ -33,6 +33,8 @@ export function main() {
         const runtimeDir = await getRuntimeDirectory();
         const reportOutputPath = core.getInput("output");
         const REPORTS_DIR = reportOutputPath !== '' ? reportOutputPath : path.join(runtimeDir, "allure-report");
+        const reportName = core.getInput("report_name");
+        const prefix = core.getInput("gcp_bucket_prefix");
         const args = {
             runtimeCredentialDir: path.join(runtimeDir, "credentials/key.json"),
             fileProcessingConcurrency: 10,
@@ -40,10 +42,10 @@ export function main() {
             RESULTS_STAGING_PATH: path.join(runtimeDir, "allure-results"),
             ARCHIVE_DIR: path.join(runtimeDir, "archive"),
             REPORTS_DIR,
-            reportName: core.getInput("report_name"),
+            reportName: reportName !== '' ? reportName : undefined,
             retries,
             showHistory,
-            prefix: core.getInput("gcp_bucket_prefix"),
+            prefix: prefix !== '' ? prefix : undefined,
             uploadRequired: showHistory || retries > 0,
             downloadRequired: showHistory || retries > 0,
             target
