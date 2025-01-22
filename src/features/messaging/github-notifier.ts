@@ -37,7 +37,7 @@ export class GitHubNotifier implements Notifier {
 | ${passed} | ${broken}        | ${skipped}    | ${failed}     | ${unknown}|
     `;
 
-        message += `\n\nA [star](https://github.com/cybersokari/allure-deployer-action) from you would be nice`;
+        message += `\n\n[Star ☆](https://github.com/cybersokari/allure-deployer-action) this project to keep it alive`;
         const promises: Promise<void>[] = [];
         if (data.reportUrl) {
             promises.push(this.client.updateOutput({name: 'report_url', value: data.reportUrl}))

@@ -27,20 +27,24 @@ function getGithubToken() {
     return token;
 }
 function getTarget() {
-    const target = core.getInput("target").toLowerCase();
+    const target = core.getInput("target", { required: true }).toLowerCase();
     if (!["firebase", "github"].includes(target)) {
         console.log("Error: target must be either 'github' or 'firebase'.");
         process.exit(1);
     }
     return target === 'firebase' ? Target.FIREBASE : Target.GITHUB;
 }
+function getRetries() {
+    const retries = core.getInput("retries");
+    return parseInt(retries !== '' ? retries : "0", 10);
+}
 export function main() {
     (async () => {
-        const token = getGithubToken();
+        const githubToken = getGithubToken();
         const target = getTarget();
         const resultsPaths = core.getInput("allure_results_path", { required: true });
         const showHistory = core.getBooleanInput("show_history");
-        const retries = parseInt(core.getInput("retries") || "0", 10);
+        const retries = getRetries();
         const runtimeDir = await getRuntimeDirectory();
         const reportOutputPath = core.getInput("output");
         const REPORTS_DIR = reportOutputPath !== '' ? reportOutputPath : path.join(runtimeDir, "allure-report");
@@ -50,10 +54,10 @@ export function main() {
         if (googleCreds) {
             firebaseProjectId = await setGoogleCredentialsEnv(googleCreds);
         }
-        if (!firebaseProjectId && !token) {
+        if (!firebaseProjectId && !githubToken) {
             core.setFailed("Error: You must set either 'google_credentials_json' or 'github_token'.");
         }
-        if (target === Target.GITHUB && !token) {
+        if (target === Target.GITHUB && !githubToken) {
             core.setFailed("Github Pages require a 'github_token'.");
         }
         if (target === Target.FIREBASE && !googleCreds) {
@@ -61,7 +65,7 @@ export function main() {
         }
         const host = initializeHost({
             target,
-            token,
+            token: githubToken,
             ghBranch,
             firebaseProjectId,
             REPORTS_DIR,
@@ -84,17 +88,15 @@ export function main() {
             downloadRequired: showHistory || retries > 0,
             firebaseProjectId,
             host,
-            githubToken: token,
-            target: core.getInput('target') === 'firebase' ? Target.FIREBASE : Target.GITHUB
+            githubToken,
+            target
         };
         await executeDeployment(inputs);
     })();
 }
 async function executeDeployment(args) {
     try {
-        const storage = args.storageBucket && args.googleCredentialData
-            ? await initializeStorage(args)
-            : undefined;
+        const storage = await initializeStorage(args);
         const [reportUrl] = await stageDeployment(args, storage);
         const allure = new Allure({ args });
         await generateAllureReport({ allure, reportUrl });
@@ -117,30 +119,33 @@ function initializeHost({ target, token, ghBranch, firebaseProjectId, REPORTS_DI
     return undefined;
 }
 async function initializeStorage(args) {
-    if (args.target === Target.FIREBASE) {
-        const { storageBucket, googleCredentialData } = args;
-        if (!storageBucket)
-            return undefined;
-        try {
-            const credentials = JSON.parse(googleCredentialData);
-            const bucket = new GCPStorage({ credentials }).bucket(storageBucket);
-            const [exists] = await bucket.exists();
-            if (!exists) {
-                console.log(`GCP storage bucket '${bucket.name}' does not exist. History and Retries will be disabled.`);
-                return undefined;
-            }
-            const provider = new GoogleStorageService(bucket, core.getInput("prefix"));
-            return new GoogleStorage(provider, args);
-        }
-        catch (error) {
-            handleStorageError(error);
+    if (args.target === Target.GITHUB) {
+        return new GithubStorage(getArtifactService(args.githubToken), args);
+    }
+    else if (args.storageBucket && args.googleCredentialData) {
+        return new GoogleStorage(await getCloudStorageService({ storageBucket: args.storageBucket,
+            googleCredentialData: args.googleCredentialData }), args);
+    }
+    return undefined;
+}
+async function getCloudStorageService({ storageBucket, googleCredentialData }) {
+    try {
+        const credentials = JSON.parse(googleCredentialData);
+        const bucket = new GCPStorage({ credentials }).bucket(storageBucket);
+        const [exists] = await bucket.exists();
+        if (!exists) {
+            console.log(`GCP storage bucket '${bucket.name}' does not exist. History and Retries will be disabled.`);
             process.exit(1);
         }
+        return new GoogleStorageService(bucket, core.getInput("prefix"));
     }
-    else {
-        const provider = new ArtifactService(args.githubToken);
-        return new GithubStorage(provider, args);
+    catch (error) {
+        handleStorageError(error);
+        process.exit(1);
     }
+}
+function getArtifactService(token) {
+    return new ArtifactService(token);
 }
 async function stageDeployment(args, storage) {
     console.log("Staging files...");
