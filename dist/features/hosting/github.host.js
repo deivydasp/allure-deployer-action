@@ -1,10 +1,9 @@
 export class GithubHost {
-    constructor(client, filesDir) {
+    constructor(client) {
         this.client = client;
-        this.filesDir = filesDir;
     }
     async deploy() {
-        await this.client.deployPages({ dir: this.filesDir });
+        await this.client.deployPages();
     }
     async init() {
         await this.client.setupBranch();

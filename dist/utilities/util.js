@@ -14,11 +14,10 @@ export const ERROR_MESSAGES = {
 export async function setGoogleCredentialsEnv(gcpJson) {
     try {
         const serviceAccount = JSON.parse(gcpJson);
-        const credPath = GOOGLE_CREDENTIALS_PATH;
-        await fs.mkdir(path.dirname(credPath), { recursive: true });
-        await fs.writeFile(credPath, JSON.stringify(serviceAccount, null, 2), 'utf8');
-        process.env.GOOGLE_APPLICATION_CREDENTIALS = credPath;
-        return serviceAccount.project_id;
+        await fs.mkdir(path.dirname(GOOGLE_CREDENTIALS_PATH), { recursive: true });
+        await fs.writeFile(GOOGLE_CREDENTIALS_PATH, JSON.stringify(serviceAccount, null, 2), 'utf8');
+        process.env.GOOGLE_APPLICATION_CREDENTIALS = GOOGLE_CREDENTIALS_PATH;
+        return serviceAccount;
     }
     catch (e) {
         console.error('Error: Failed to set Google Credentials file', e);

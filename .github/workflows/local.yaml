@@ -48,7 +48,7 @@ jobs:
           slack_token: ${{secrets.SLACK_TOKEN}}
           show_history: ${{github.event.inputs.show-history}}
           retries: ${{github.event.inputs.retries}}
-          prefix: 'test-action-firebase'
+          gcp_bucket_prefix: 'test-action-firebase'
   gh-pages:
     if: ${{ github.event.inputs.job == 'gh-pages' }}
     runs-on: ${{ github.event.inputs.runner }}
@@ -73,7 +73,7 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4.1.5
-      - name: Deploy Reports to GitHub pages with History and Retries
+      - name: Deploy Reports to GitHub pages
         uses: ./
         with:
           target: 'github'

@@ -159,7 +159,7 @@ jobs:
 | `slack_token`             | Slack app token for sending notifications.                                                  | None             | No        |
 | `pr_comment`              | Post report information as a pull request comment.                                          | `true`           | No        |
 | `github_pages_branch`     | Branch used for GitHub Pages deployments.                                                   | `gh-pages`       | No        |
-| `prefix`                  | Path prefix for archived files in the GCP storage bucket when target is `firebase` .        | None             | No        |
+| `gcp_bucket_prefix`       | Path prefix for archived files in the GCP storage bucket when target is `firebase` .        | None             | No        |
 
 
 ## Outputs

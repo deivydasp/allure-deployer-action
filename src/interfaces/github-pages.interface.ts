@@ -3,6 +3,6 @@ export interface GithubPagesInterface {
     owner: string;
     repo: string;
     runNumber: number;
-    deployPages({dir}: { dir: string}): Promise<void>;
+    deployPages(): Promise<void>;
     setupBranch(): Promise<void>;
 }

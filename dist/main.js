@@ -1,6 +1,6 @@
 import * as process from "node:process";
 import path from "node:path";
-import { Allure, ConsoleNotifier, copyFiles, FirebaseHost, FirebaseService, getDashboardUrl, getReportStats, getRuntimeDirectory, GoogleStorageService, NotificationData, NotifyHandler, SlackNotifier, SlackService, GoogleStorage, validateResultsPaths, } from "allure-deployer-shared";
+import { Allure, ConsoleNotifier, copyFiles, FirebaseHost, FirebaseService, getReportStats, getRuntimeDirectory, GoogleStorage, GoogleStorageService, NotificationData, NotifyHandler, SlackNotifier, SlackService, validateResultsPaths, } from "allure-deployer-shared";
 import { Storage as GCPStorage } from "@google-cloud/storage";
 import { GitHubService } from "./services/github.service.js";
 import { GitHubNotifier } from "./features/messaging/github-notifier.js";
@@ -12,20 +12,6 @@ import { setGoogleCredentialsEnv, validateSlackConfig } from "./utilities/util.j
 import { Target } from "./interfaces/args.interface.js";
 import { ArtifactService } from "./services/artifact.service.js";
 import { GithubStorage } from "./features/github-storage.js";
-function getGoogleCredentials() {
-    const credentials = core.getInput("google_credentials_json");
-    if (!credentials) {
-        return undefined;
-    }
-    return credentials;
-}
-function getGithubToken() {
-    const token = core.getInput("github_token");
-    if (!token) {
-        return undefined;
-    }
-    return token;
-}
 function getTarget() {
     const target = core.getInput("target", { required: true }).toLowerCase();
     if (!["firebase", "github"].includes(target)) {
@@ -40,7 +26,6 @@ function getRetries() {
 }
 export function main() {
     (async () => {
-        const githubToken = getGithubToken();
         const target = getTarget();
         const resultsPaths = core.getInput("allure_results_path", { required: true });
         const showHistory = core.getBooleanInput("show_history");
@@ -48,32 +33,7 @@ export function main() {
         const runtimeDir = await getRuntimeDirectory();
         const reportOutputPath = core.getInput("output");
         const REPORTS_DIR = reportOutputPath !== '' ? reportOutputPath : path.join(runtimeDir, "allure-report");
-        const ghBranch = core.getInput("github_pages_branch");
-        const googleCreds = getGoogleCredentials();
-        let firebaseProjectId;
-        if (googleCreds) {
-            firebaseProjectId = await setGoogleCredentialsEnv(googleCreds);
-        }
-        if (!firebaseProjectId && !githubToken) {
-            core.setFailed("Error: You must set either 'google_credentials_json' or 'github_token'.");
-        }
-        if (target === Target.GITHUB && !githubToken) {
-            core.setFailed("Github Pages require a 'github_token'.");
-        }
-        if (target === Target.FIREBASE && !googleCreds) {
-            core.setFailed("Firebase Hosting require a 'google_credentials_json'.");
-        }
-        const host = initializeHost({
-            target,
-            token: githubToken,
-            ghBranch,
-            firebaseProjectId,
-            REPORTS_DIR,
-        });
-        const storageBucket = core.getInput("storage_bucket");
-        const inputs = {
-            googleCredentialData: googleCreds,
-            storageBucket: storageBucket !== '' ? storageBucket : undefined,
+        const args = {
             runtimeCredentialDir: path.join(runtimeDir, "credentials/key.json"),
             fileProcessingConcurrency: 10,
             RESULTS_PATHS: await validateResultsPaths(resultsPaths),
@@ -83,15 +43,37 @@ export function main() {
             reportName: core.getInput("report_name"),
             retries,
             showHistory,
-            prefix: core.getInput("prefix"),
+            prefix: core.getInput("gcp_bucket_prefix"),
             uploadRequired: showHistory || retries > 0,
             downloadRequired: showHistory || retries > 0,
-            firebaseProjectId,
-            host,
-            githubToken,
             target
         };
-        await executeDeployment(inputs);
+        if (target === Target.FIREBASE) {
+            const credentials = core.getInput("google_credentials_json");
+            if (!credentials) {
+                core.setFailed("Error: Firebase Hosting requires a valid 'google_credentials_json'.");
+                return;
+            }
+            let firebaseProjectId = (await setGoogleCredentialsEnv(credentials)).project_id;
+            args.googleCredentialData = credentials;
+            args.firebaseProjectId = firebaseProjectId;
+            args.host = getFirebaseHost({ firebaseProjectId, REPORTS_DIR });
+            const storageBucket = core.getInput("storage_bucket");
+            args.storageBucket = storageBucket !== '' ? storageBucket : undefined;
+        }
+        else {
+            const token = core.getInput("github_token");
+            if (!token) {
+                core.setFailed("Error: Github Pages requires a 'github_token'.");
+                return;
+            }
+            args.githubToken = token;
+            args.host = getGitHubHost({
+                token,
+                REPORTS_DIR,
+            });
+        }
+        await executeDeployment(args);
     })();
 }
 async function executeDeployment(args) {
@@ -108,23 +90,23 @@ async function executeDeployment(args) {
         process.exit(1);
     }
 }
-function initializeHost({ target, token, ghBranch, firebaseProjectId, REPORTS_DIR, }) {
-    if (token && ghBranch && target === Target.GITHUB) {
-        const client = new GithubPagesService({ token, branch: ghBranch, filesDir: REPORTS_DIR });
-        return new GithubHost(client, ghBranch);
-    }
-    else if (target === Target.FIREBASE && firebaseProjectId) {
-        return new FirebaseHost(new FirebaseService(firebaseProjectId, REPORTS_DIR));
-    }
-    return undefined;
+function getFirebaseHost({ firebaseProjectId, REPORTS_DIR }) {
+    return new FirebaseHost(new FirebaseService(firebaseProjectId, REPORTS_DIR));
+}
+function getGitHubHost({ token, REPORTS_DIR, }) {
+    const branch = core.getInput("github_pages_branch");
+    const client = new GithubPagesService({ token, branch, filesDir: REPORTS_DIR });
+    return new GithubHost(client);
 }
 async function initializeStorage(args) {
     if (args.target === Target.GITHUB) {
         return new GithubStorage(getArtifactService(args.githubToken), args);
     }
     else if (args.storageBucket && args.googleCredentialData) {
-        return new GoogleStorage(await getCloudStorageService({ storageBucket: args.storageBucket,
-            googleCredentialData: args.googleCredentialData }), args);
+        return new GoogleStorage(await getCloudStorageService({
+            storageBucket: args.storageBucket,
+            googleCredentialData: args.googleCredentialData
+        }), args);
     }
     return undefined;
 }
@@ -201,15 +183,12 @@ async function sendNotifications(args, resultsStats, reportUrl) {
         const slackClient = new SlackService({ channel: slackChannel, token: slackToken });
         notifiers.push(new SlackNotifier(slackClient, args));
     }
-    const dashboardUrl = process.env.DEBUG === 'true' && args.storageBucket && args.firebaseProjectId
-        ? getDashboardUrl({ storageBucket: args.storageBucket, projectId: args.firebaseProjectId })
-        : undefined;
-    const githubNotifierClient = new GitHubService();
-    const token = core.getInput("github_token");
+    const token = args.githubToken;
     const prNumber = github.context.payload.pull_request?.number;
     const prComment = core.getBooleanInput("pr_comment");
+    const githubNotifierClient = new GitHubService();
     notifiers.push(new GitHubNotifier({ client: githubNotifierClient, token, prNumber, prComment }));
-    const notificationData = new NotificationData(resultsStats, reportUrl, dashboardUrl);
+    const notificationData = new NotificationData(resultsStats, reportUrl);
     await new NotifyHandler(notifiers).sendNotifications(notificationData);
 }
 function handleStorageError(error) {

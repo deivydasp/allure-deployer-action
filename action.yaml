@@ -39,8 +39,8 @@ inputs:
   show_history:
     description: "Show history in the test report (true/false)"
     default: "true"
-  prefix:
-    description: "The storage bucket path to back up Allure results and history files"
+  gcp_bucket_prefix:
+    description: "The GCP storage bucket path to back up Allure results and history files"
     required: false
   pr_comment:
     description: "Post test report information as pull request comment. Requires `github_token` to be set with permission  "
@@ -49,10 +49,10 @@ inputs:
     description: "A custom directory to generate Allure report into."
     required: false
   github_token:
-    description: "Set generated GITHUB_TOKEN or Personal Access Token for pr_comment and deploying report to GitHub pages"
+    description: "Generated GITHUB_TOKEN or Personal Access Token for deploying report to GitHub pages and pr_comment"
     required: false
   github_pages_branch:
-    description: "Set target branch for Deploying test report to GitHub Pages"
+    description: "Target branch for Deploying to GitHub Pages"
     default: 'gh-pages'
 
 outputs:
