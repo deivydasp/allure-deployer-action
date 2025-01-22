@@ -60,14 +60,11 @@ jobs:
         uses: ./
         with:
           target: 'github'
-          google_credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
           github_pages_branch: 'gh-pages'
           github_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
           allure_results_path: 'allure-results'
-          storage_bucket: ${{secrets.STORAGE_BUCKET}}
           show_history: ${{github.event.inputs.show-history}}
           retries: ${{github.event.inputs.retries}}
-          prefix: 'test-action-gh-pages'
 
   gh-pages-no-backup:
     if: ${{ github.event.inputs.job == 'gh-pages-no-backup'}}
