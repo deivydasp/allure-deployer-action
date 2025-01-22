@@ -11,7 +11,7 @@ Host Allure reports on the web with all its features. History, Retries, Report A
 - `macos-latest`
 - `windows-latest`  
 
-If you’re using self-hosted runners, ensure you have a Java environment set up.
+Self-hosted runner? Ensure you have a Java installed and [firewall rules configured](https://github.com/actions/toolkit/tree/main/packages/artifact#breaking-changes).
 
   
 ## Example 1: Deploy to GitHub Pages
