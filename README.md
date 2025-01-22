@@ -41,7 +41,6 @@ Example test run: [actions/runs/12783827755](https://github.com/cybersokari/allu
 
 ## Example 2: Deploy to Firebase Hosting
 
-Publish reports to Firebase Hosting while enabling history and retries:
 ```yaml
 jobs:
   firebase:
