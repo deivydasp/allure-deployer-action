@@ -1,6 +1,6 @@
 # Allure Deployer Action
 
-Host Allure reports on the web with all its features. History, Retries, Report Aggregation, and Slack integration. 
+Host Allure reports on the web with History, Retries, Report Aggregation, and Slack integration. 
 
 **Supported Deployment Targets:**
 - **GitHub Pages**
