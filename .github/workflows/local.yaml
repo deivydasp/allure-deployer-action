@@ -47,6 +47,7 @@ jobs:
           show_history: ${{github.event.inputs.show-history}}
           retries: ${{github.event.inputs.retries}}
           gcp_bucket_prefix: 'test-action-firebase'
+          report_name: ${{github.event.inputs.report-name}}
   gh-pages:
     if: ${{ github.event.inputs.job == 'gh-pages' }}
     runs-on: ${{ github.event.inputs.runner }}
@@ -63,6 +64,7 @@ jobs:
           allure_results_path: 'allure-results'
           show_history: ${{github.event.inputs.show-history}}
           retries: ${{github.event.inputs.retries}}
+          report_name: ${{github.event.inputs.report-name}}
 
   gh-pages-no-backup:
     if: ${{ github.event.inputs.job == 'gh-pages-no-backup'}}
@@ -78,3 +80,4 @@ jobs:
           github_pages_branch: 'gh-pages'
           github_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
           allure_results_path: 'allure-results'
+          report_name: ${{github.event.inputs.report-name}}
