@@ -9,9 +9,8 @@ Host Allure reports on the web with all its features. History, Retries, Report A
 **Supported Runners:**  
 - `ubuntu-latest`
 - `macos-latest`
-- `windows-latest`  
-
-Self-hosted runner? Ensure you have a Java installed and [firewall rules configured](https://github.com/actions/toolkit/tree/main/packages/artifact#breaking-changes).
+- `windows-latest`
+- `Self-hosted runner`. Ensure you have a Java runtime installed and [firewall rules configured](https://github.com/actions/toolkit/tree/main/packages/artifact#breaking-changes).
 
   
 ## Example 1: Deploy to GitHub Pages
