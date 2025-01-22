@@ -63,9 +63,8 @@ Example test run: [actions/runs/12783830022](https://github.com/cybersokari/allu
 
 ___
 
-## Example 3: Deploy on Pull Request
+## Example 3: Print test report URL as Pull Request comment
 
-Add comments with test report URL directly on pull requests:
 ```yaml
 on:
   pull_request:
@@ -79,17 +78,22 @@ jobs:
       - uses: actions/checkout@v4.1.5
       - name: Run test
         run: #Run test and create allure results
-      - name: Deploy Reports to Firebase on Pull Request
+      - name: Deploy Reports to GitHub pages on Pull Request
         uses: cybersokari/allure-deployer-action@v1.5.1
         with:
           pr_comment: 'true'
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          target: 'firebase'
+          target: 'github'
           allure_results_path: 'allure-results'
-          google_credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
-          storage_bucket: ${{vars.STORAGE_BUCKET}}
           show_history: 'true'
           retries: 5
+```
+Pull request comment [example](https://github.com/cybersokari/allure-deployer-action/actions/runs/12903543578/attempts/1#summary-35978983051)
+```markdown
+📊 Test Report: https://your-example-url.web.app
+| ✅ Passed | ⚠️ Broken |
+|----------|-----------|
+| 15       | 2         |
 ```
 ---
 
