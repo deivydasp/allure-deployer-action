@@ -26,7 +26,7 @@ jobs:
       - name: Run test
         run: #Run test and create allure results
       - name: Deploy Reports to GitHub pages with History and Retries
-        uses: cybersokari/allure-deployer-action@v1.5.1
+        uses: cybersokari/allure-deployer-action@v1.6.2
         with:
           target: 'github'
           github_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
@@ -50,7 +50,7 @@ jobs:
       - name: Run test
         run: #Run test and create allure results
       - name: Deploy Reports to Firebase with History and Retries
-        uses: cybersokari/allure-deployer-action@v1.5.1
+        uses: cybersokari/allure-deployer-action@v1.6.2
         with:
           target: 'firebase'
           allure_results_path: 'allure-results'
@@ -79,7 +79,7 @@ jobs:
       - name: Run test
         run: #Run test and create allure results
       - name: Deploy Reports to GitHub pages on Pull Request
-        uses: cybersokari/allure-deployer-action@v1.5.1
+        uses: cybersokari/allure-deployer-action@v1.6.2
         with:
           pr_comment: 'true'
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -108,7 +108,7 @@ jobs:
       - name: Run test in multi-module project
         run: # Run test and create multiple allure results directories
       - name: Deploy Reports
-        uses: cybersokari/allure-deployer-action@v1.5.1
+        uses: cybersokari/allure-deployer-action@v1.6.2
         with:
           target: 'firebase'
           allure_results_path: 'allure-results_1,allure-results_2,allure-results_3'
@@ -130,7 +130,7 @@ jobs:
       - name: Run test in project
         run: # Run test and create allure results directory
       - name: Deploy Report, notify Slack
-        uses: cybersokari/allure-deployer-action@v1.5.1
+        uses: cybersokari/allure-deployer-action@v1.6.2
         with:
           target: 'github'
           github_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
