@@ -3,12 +3,13 @@ import path from "node:path";
 import {GitHubArgInterface} from "../interfaces/args.interface.js";
 import fs from "fs/promises";
 import pLimit from "p-limit";
-import {ArtifactResponse, ArtifactService} from "../services/artifact.service.js";
+import {ArtifactService} from "../services/artifact.service.js";
 import * as os from "node:os";
 import fsSync from "fs";
 import unzipper, {Entry} from "unzipper";
 
 const HISTORY_ARCHIVE_NAME = "last-history";
+const RESULTS_ARCHIVE_NAME = "allure-results";
 export class GithubStorage implements IStorage {
 
     constructor(private readonly provider: ArtifactService, readonly args: GitHubArgInterface) {
@@ -78,8 +79,9 @@ export class GithubStorage implements IStorage {
      */
     private async stageHistoryFiles(): Promise<void> {
         const files = await this.provider.getFiles({
-            maxResults: 1,
+            maxResults: 10,
             matchGlob: HISTORY_ARCHIVE_NAME,
+            order: Order.byNewestToOldest
         });
 
         if (files.length === 0) {
@@ -87,18 +89,30 @@ export class GithubStorage implements IStorage {
             return;
         }
 
+        const limit = pLimit(this.args.fileProcessingConcurrency);
+        const tasks: Promise<any>[] = [];
+        if (files.length > 1) {
+            const filesToDelete = files.splice(1)
+            for (const file of filesToDelete) {
+                tasks.push(limit(async () => {
+                    try {
+                        await this.provider.deleteFile(file.id);
+                    } catch (error) {
+                        console.warn("Delete file error:", error);
+                    }
+                }))
+            }
+        }
+
         const [downloadedPath] = await this.provider.download({
-            files,
+            files: [files[0]],
             destination: this.args.ARCHIVE_DIR,
         });
 
         const stagingDir = path.join(this.args.RESULTS_STAGING_PATH, "history");
         await fs.mkdir(stagingDir, {recursive: true});
-        await this.unzipToStaging(downloadedPath, stagingDir);
-    }
-
-    private isResultsArchive(file: ArtifactResponse): boolean {
-        return /^\d{13}$/.test(file.name) && file.name !== HISTORY_ARCHIVE_NAME
+        tasks.push(this.unzipToStaging(downloadedPath, stagingDir));
+        await Promise.all(tasks);
     }
 
     /**
@@ -108,20 +122,19 @@ export class GithubStorage implements IStorage {
     private async stageResultFiles(retries: number): Promise<void> {
         let files = await this.provider.getFiles({
             order: Order.byOldestToNewest,
+            matchGlob: RESULTS_ARCHIVE_NAME,
+            maxResults: this.args.retries
         });
-        // Remove non-results archives
-        files = files.filter(this.isResultsArchive)
         if(files.length === 0) return
 
         const limit = pLimit(this.args.fileProcessingConcurrency);
         const tasks: Promise<void>[] = [];
         if (files.length > retries) {
             const filesToDelete = files.slice(0, files.length - retries);
-            files = files.slice(files.length - retries);
             for (const file of filesToDelete) {
                 tasks.push(limit(async () => {
                     try {
-                        await this.provider.deleteFile(file.name);
+                        await this.provider.deleteFile(file.id);
                     } catch (error) {
                         console.warn("Delete file error:", error);
                     }
@@ -160,7 +173,7 @@ export class GithubStorage implements IStorage {
             resultPath = path.join(os.tmpdir(), 'allure-deployer-results-temp')
             await copyFiles({from: this.args.RESULTS_PATHS, to: resultPath})
         }
-        await this.provider.upload(resultPath, Date.now().toString());
+        await this.provider.upload(resultPath, RESULTS_ARCHIVE_NAME);
     }
 
     /**

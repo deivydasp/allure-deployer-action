@@ -13,8 +13,15 @@ export class ArtifactService {
         this.artifactClient = new DefaultArtifactClient();
         this.octokit = new Octokit({ auth: this.token });
     }
-    async deleteFile(fileName) {
-        await this.artifactClient.deleteArtifact(fileName);
+    async deleteFile(id) {
+        await this.octokit.request('DELETE /repos/{owner}/{repo}/actions/artifacts/{artifact_id}', {
+            owner: github.context.repo.owner,
+            repo: github.context.repo.repo,
+            artifact_id: id,
+            headers: {
+                'X-GitHub-Api-Version': '2022-11-28'
+            }
+        });
     }
     deleteFiles(matchGlob) {
         throw new Error('Not implemented');
