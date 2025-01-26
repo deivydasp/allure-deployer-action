@@ -16,7 +16,6 @@ export type GitHubConfig = {
     owner: string;
     repo: string;
     branch: string;
-    runNumber: number;
     runId: string;
     subFolder: string;
     filesDir: string;
@@ -32,14 +31,13 @@ export class GithubPagesService implements GithubPagesInterface {
     private readonly retryConfig: RetryConfig;
     readonly repo: string;
     readonly owner: string;
-    readonly runNumber: number;
     private readonly runId: string;
 
     constructor({
                     branch,
                     filesDir,
                     retryConfig = DEFAULT_RETRY_CONFIG,
-                    token, repo, runNumber, runId, subFolder, owner
+                    token, repo, runId, subFolder, owner
                 }: GitHubConfig) {
         this.octokit = new Octokit({auth: token});
         this.branch = branch;
@@ -47,7 +45,6 @@ export class GithubPagesService implements GithubPagesInterface {
         this.retryConfig = retryConfig;
         this.owner = owner
         this.repo = repo
-        this.runNumber = runNumber
         this.subFolder = subFolder
         this.runId = runId
     }
@@ -114,7 +111,7 @@ export class GithubPagesService implements GithubPagesInterface {
             files.map((file) =>
                 limit(async () => {
                     const relativePath = path.posix.relative(this.filesDir, file);
-                    const repoPath = path.join(this.subFolder, this.runNumber.toString(), relativePath);
+                    const repoPath = path.join(this.subFolder, relativePath);
                     const content = fs.readFileSync(file, "utf8");
 
                     const blob = await withRetry(async () =>

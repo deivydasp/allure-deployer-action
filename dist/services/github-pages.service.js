@@ -4,14 +4,13 @@ import fs from "fs";
 import path from "node:path";
 import { DEFAULT_RETRY_CONFIG, withRetry } from "../utilities/util.js";
 export class GithubPagesService {
-    constructor({ branch, filesDir, retryConfig = DEFAULT_RETRY_CONFIG, token, repo, runNumber, runId, subFolder, owner }) {
+    constructor({ branch, filesDir, retryConfig = DEFAULT_RETRY_CONFIG, token, repo, runId, subFolder, owner }) {
         this.octokit = new Octokit({ auth: token });
         this.branch = branch;
         this.filesDir = filesDir;
         this.retryConfig = retryConfig;
         this.owner = owner;
         this.repo = repo;
-        this.runNumber = runNumber;
         this.subFolder = subFolder;
         this.runId = runId;
     }
@@ -71,7 +70,7 @@ export class GithubPagesService {
         const limit = pLimit(50);
         const tree = await Promise.all(files.map((file) => limit(async () => {
             const relativePath = path.posix.relative(this.filesDir, file);
-            const repoPath = path.join(this.subFolder, this.runNumber.toString(), relativePath);
+            const repoPath = path.join(this.subFolder, relativePath);
             const content = fs.readFileSync(file, "utf8");
             const blob = await withRetry(async () => this.octokit.git.createBlob({
                 owner,

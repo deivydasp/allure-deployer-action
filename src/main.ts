@@ -142,8 +142,7 @@ function getGitHubHost({
         runId: github.context.runId.toString(),
         owner : github.context.repo.owner,
         repo : github.context.repo.repo,
-        runNumber : github.context.runNumber,
-        subFolder : core.getInput('github_subfolder'),
+        subFolder : path.join(core.getInput('github_subfolder'), `${github.context.runNumber}`),
         branch: core.getInput("github_pages_branch"),
         filesDir: REPORTS_DIR,
         token: token
