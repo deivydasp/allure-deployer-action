@@ -16,7 +16,7 @@
     "@actions/core": "^1.11.1",
     "@actions/github": "^6.0.0",
     "@octokit/rest": "^21.1.0",
-    "allure-deployer-shared": "1.1.10"
+    "allure-deployer-shared": "1.2.0"
   },
   "devDependencies": {
     "@types/chai": "^5.0.1",

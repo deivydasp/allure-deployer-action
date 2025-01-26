@@ -3,7 +3,6 @@ import {Octokit} from "@octokit/rest";
 import pLimit from "p-limit";
 import fs from "fs";
 import path from "node:path";
-import github from "@actions/github";
 import {DEFAULT_RETRY_CONFIG, RetryConfig, withRetry} from "../utilities/util.js";
 
 type GitHubTree = {
@@ -13,44 +12,52 @@ type GitHubTree = {
     sha?: string | null | undefined;
     content?: string | undefined;
 }
-
-
+export type GitHubConfig = {
+    owner: string;
+    repo: string;
+    branch: string;
+    runNumber: number;
+    runId: string;
+    subFolder: string;
+    filesDir: string;
+    retryConfig?: RetryConfig;
+    token: string
+}
 
 export class GithubPagesService implements GithubPagesInterface {
     private octokit: Octokit;
     public readonly branch: string;
+    public readonly subFolder: string;
     private readonly filesDir: string;
     private readonly retryConfig: RetryConfig;
     readonly repo: string;
     readonly owner: string;
     readonly runNumber: number;
+    private readonly runId: string;
 
     constructor({
                     branch,
                     filesDir,
                     retryConfig = DEFAULT_RETRY_CONFIG,
-                    token
-                }: {
-        branch: string,
-        filesDir: string,
-        retryConfig?: RetryConfig,
-        token: string,
-    }) {
+                    token, repo, runNumber, runId, subFolder, owner
+                }: GitHubConfig) {
         this.octokit = new Octokit({auth: token});
         this.branch = branch;
         this.filesDir = filesDir;
         this.retryConfig = retryConfig;
-        this.owner = github.context.repo.owner
-        this.repo = github.context.repo.repo
-        this.runNumber = github.context.runNumber
+        this.owner = owner
+        this.repo = repo
+        this.runNumber = runNumber
+        this.subFolder = subFolder
+        this.runId = runId
     }
 
     async deployPages(): Promise<void> {
         if (!fs.existsSync(this.filesDir)) {
             throw new Error(`Directory does not exist: ${this.filesDir}`);
         }
-        const owner = github.context.repo.owner;
-        const repo = github.context.repo.repo;
+        const owner = this.owner;
+        const repo = this.repo;
 
         // Get parent commit SHA with retry logic
         let latestCommitSha: string;
@@ -107,7 +114,7 @@ export class GithubPagesService implements GithubPagesInterface {
             files.map((file) =>
                 limit(async () => {
                     const relativePath = path.posix.relative(this.filesDir, file);
-                    const repoPath = `${github.context.runNumber}/${relativePath}`;
+                    const repoPath = path.join(this.subFolder, this.runNumber.toString(), relativePath);
                     const content = fs.readFileSync(file, "utf8");
 
                     const blob = await withRetry(async () =>
@@ -144,7 +151,7 @@ export class GithubPagesService implements GithubPagesInterface {
                 this.octokit.git.createCommit({
                     owner,
                     repo,
-                    message: `GitHub Pages ${github.context.runId}`,
+                    message: `GitHub Pages ${this.runId}`,
                     tree: newTree.data.sha,
                     parents: [latestCommitSha],
                 })
@@ -164,8 +171,8 @@ export class GithubPagesService implements GithubPagesInterface {
     }
 
     async setupBranch(): Promise<void> {
-        const owner = github.context.repo.owner;
-        const repo = github.context.repo.repo;
+        const owner = this.owner;
+        const repo = this.repo;
 
         try {
             await withRetry(async () =>

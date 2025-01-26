@@ -29,6 +29,15 @@ on:
       report-name:
         description: 'Title of the report'
         default: 'Allure Report'
+      report-lang:
+        description: 'Allure report language'
+        type: choice
+        default: en
+        options:
+          - en
+          - ru
+          - fr
+          - de
 jobs:
   firebase:
     if: ${{ github.event.inputs.job == 'firebase' }}
@@ -48,6 +57,7 @@ jobs:
           retries: ${{github.event.inputs.retries}}
           gcp_bucket_prefix: 'test-action-firebase'
           report_name: ${{github.event.inputs.report-name}}
+          language: ${{github.event.inputs.report-lang}}
   gh-pages:
     if: ${{ github.event.inputs.job == 'gh-pages' }}
     runs-on: ${{ github.event.inputs.runner }}
@@ -65,6 +75,7 @@ jobs:
           show_history: ${{github.event.inputs.show-history}}
           retries: ${{github.event.inputs.retries}}
           report_name: ${{github.event.inputs.report-name}}
+          language: ${{github.event.inputs.report-lang}}
 
   gh-pages-no-backup:
     if: ${{ github.event.inputs.job == 'gh-pages-no-backup'}}
@@ -81,3 +92,4 @@ jobs:
           github_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
           allure_results_path: 'allure-results'
           report_name: ${{github.event.inputs.report-name}}
+          language: ${{github.event.inputs.report-lang}}

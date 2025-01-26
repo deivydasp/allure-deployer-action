@@ -24,6 +24,10 @@ function getRetries() {
     const retries = core.getInput("retries");
     return parseInt(retries !== '' ? retries : "0", 10);
 }
+function getInputOrUndefined(name) {
+    const input = core.getInput(name);
+    return input !== '' ? input : undefined;
+}
 export function main() {
     (async () => {
         const target = getTarget();
@@ -31,8 +35,8 @@ export function main() {
         const showHistory = core.getBooleanInput("show_history");
         const retries = getRetries();
         const runtimeDir = await getRuntimeDirectory();
-        const reportOutputPath = core.getInput("output");
-        const REPORTS_DIR = reportOutputPath !== '' ? reportOutputPath : path.join(runtimeDir, "allure-report");
+        const reportOutputPath = getInputOrUndefined('output');
+        const REPORTS_DIR = reportOutputPath ? reportOutputPath : path.join(runtimeDir, "allure-report");
         const reportName = core.getInput("report_name");
         const prefix = core.getInput("gcp_bucket_prefix");
         const args = {
@@ -48,7 +52,8 @@ export function main() {
             prefix: prefix !== '' ? prefix : undefined,
             uploadRequired: showHistory || retries > 0,
             downloadRequired: showHistory || retries > 0,
-            target
+            target,
+            reportLanguage: getInputOrUndefined('language')
         };
         if (target === Target.FIREBASE) {
             const credentials = core.getInput("google_credentials_json");
@@ -66,7 +71,7 @@ export function main() {
         else {
             const token = core.getInput("github_token");
             if (!token) {
-                core.setFailed("Error: Github Pages requires a 'github_token'.");
+                core.setFailed("Error: Github Pages require a 'github_token'.");
                 return;
             }
             args.githubToken = token;
@@ -96,13 +101,21 @@ function getFirebaseHost({ firebaseProjectId, REPORTS_DIR }) {
     return new FirebaseHost(new FirebaseService(firebaseProjectId, REPORTS_DIR));
 }
 function getGitHubHost({ token, REPORTS_DIR, }) {
-    const branch = core.getInput("github_pages_branch");
-    const client = new GithubPagesService({ token, branch, filesDir: REPORTS_DIR });
-    return new GithubHost(client);
+    const config = {
+        runId: github.context.runId.toString(),
+        owner: github.context.repo.owner,
+        repo: github.context.repo.repo,
+        runNumber: github.context.runNumber,
+        subFolder: core.getInput('github_subfolder'),
+        branch: core.getInput("github_pages_branch"),
+        filesDir: REPORTS_DIR,
+        token: token
+    };
+    return new GithubHost(new GithubPagesService(config));
 }
 async function initializeStorage(args) {
     if (args.target === Target.GITHUB) {
-        return new GithubStorage(getArtifactService(args.githubToken), args);
+        return new GithubStorage(new ArtifactService(args.githubToken), args);
     }
     else if (args.storageBucket && args.googleCredentialData) {
         return new GoogleStorage(await getCloudStorageService({
@@ -127,9 +140,6 @@ async function getCloudStorageService({ storageBucket, googleCredentialData }) {
         handleStorageError(error);
         process.exit(1);
     }
-}
-function getArtifactService(token) {
-    return new ArtifactService(token);
 }
 async function stageDeployment(args, storage) {
     console.log("Staging files...");

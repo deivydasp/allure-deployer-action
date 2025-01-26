@@ -19,6 +19,15 @@ on:
       report-name:
         description: 'Title of the report'
         default: 'Allure Report'
+      report-lang:
+        description: 'Allure report language'
+        type: choice
+        default: en
+        options:
+          - en
+          - ru
+          - fr
+          - de
 
 jobs:
   test-action-firebase:

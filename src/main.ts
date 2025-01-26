@@ -24,7 +24,7 @@ import {
 import {Storage as GCPStorage} from "@google-cloud/storage";
 import {GitHubService} from "./services/github.service.js";
 import {GitHubNotifier} from "./features/messaging/github-notifier.js";
-import {GithubPagesService} from "./services/github-pages.service.js";
+import {GitHubConfig, GithubPagesService} from "./services/github-pages.service.js";
 import {GithubHost} from "./features/hosting/github.host.js";
 import github from "@actions/github";
 import core from "@actions/core";
@@ -47,6 +47,11 @@ function getRetries(): number {
     return parseInt(retries !== '' ? retries : "0", 10);
 }
 
+function getInputOrUndefined(name: string): string | undefined {
+    const input = core.getInput(name);
+    return input !== '' ? input : undefined;
+}
+
 export function main() {
     (async () => {
 
@@ -55,8 +60,8 @@ export function main() {
         const showHistory = core.getBooleanInput("show_history");
         const retries = getRetries()
         const runtimeDir = await getRuntimeDirectory();
-        const reportOutputPath = core.getInput("output");
-        const REPORTS_DIR = reportOutputPath !== '' ? reportOutputPath : path.join(runtimeDir, "allure-report");
+        const reportOutputPath = getInputOrUndefined('output');
+        const REPORTS_DIR = reportOutputPath ? reportOutputPath : path.join(runtimeDir, "allure-report");
         const reportName = core.getInput("report_name");
         const prefix= core.getInput("gcp_bucket_prefix")
         const args: GitHubArgInterface = {
@@ -72,7 +77,8 @@ export function main() {
             prefix: prefix !== '' ? prefix : undefined,
             uploadRequired: showHistory || retries > 0,
             downloadRequired: showHistory || retries > 0,
-            target
+            target,
+            reportLanguage: getInputOrUndefined('language')
         };
 
         if (target === Target.FIREBASE) {
@@ -90,7 +96,7 @@ export function main() {
         } else {
             const token = core.getInput("github_token");
             if (!token) {
-                core.setFailed("Error: Github Pages requires a 'github_token'.");
+                core.setFailed("Error: Github Pages require a 'github_token'.");
                 return;
             }
             args.githubToken = token;
@@ -132,14 +138,22 @@ function getGitHubHost({
     token: string;
     REPORTS_DIR: string;
 }): GithubHost {
-    const branch = core.getInput("github_pages_branch");
-    const client = new GithubPagesService({token, branch, filesDir: REPORTS_DIR});
-    return new GithubHost(client);
+    const config : GitHubConfig= {
+        runId: github.context.runId.toString(),
+        owner : github.context.repo.owner,
+        repo : github.context.repo.repo,
+        runNumber : github.context.runNumber,
+        subFolder : core.getInput('github_subfolder'),
+        branch: core.getInput("github_pages_branch"),
+        filesDir: REPORTS_DIR,
+        token: token
+    }
+    return new GithubHost(new GithubPagesService(config));
 }
 
 async function initializeStorage(args: GitHubArgInterface): Promise<IStorage | undefined> {
     if (args.target === Target.GITHUB) {
-        return new GithubStorage(getArtifactService(args.githubToken!), args)
+        return new GithubStorage(new ArtifactService(args.githubToken!), args)
     } else if (args.storageBucket && args.googleCredentialData) {
         return new GoogleStorage(await getCloudStorageService({
             storageBucket: args.storageBucket,
@@ -166,10 +180,6 @@ async function getCloudStorageService({storageBucket, googleCredentialData}: {
         handleStorageError(error);
         process.exit(1);
     }
-}
-
-function getArtifactService(token: string): ArtifactService {
-    return new ArtifactService(token)
 }
 
 async function stageDeployment(args: ArgsInterface, storage?: IStorage) {

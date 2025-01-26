@@ -153,6 +153,7 @@ jobs:
 | `google_credentials_json` | Firebase credentials to enable **History**, **Retries**, and **Firebase Hosting**.          | None             | No        |
 | `github_token`            | GitHub token or personal access token to enable GitHub pages hosting and `pr_comment`       | None             | No        |
 | `report_name`             | Custom name/title for the report.                                                           | `Allure Report`  | No        |
+| `language`                | Allure report language                                                                      | `en`             | No        |
 | `storage_bucket`          | Google Cloud Storage bucket name for **History** and **Retries** when target is `firebase`. | None             | No        |
 | `show_history`            | Display history from previous runs.                                                         | `true`           | No        |
 | `retries`                 | Number of previous runs to display as retries.                                              | 0                | No        |
@@ -161,7 +162,9 @@ jobs:
 | `slack_token`             | Slack app token for sending notifications.                                                  | None             | No        |
 | `pr_comment`              | Post report information as a pull request comment.                                          | `true`           | No        |
 | `github_pages_branch`     | Branch used for GitHub Pages deployments.                                                   | `gh-pages`       | No        |
+| `github_subfolder`        | Sub directory to write the test reports files in Git                                        | None             | No        |
 | `gcp_bucket_prefix`       | Path prefix for archived files in the GCP storage bucket when target is `firebase` .        | None             | No        |
+
 
 
 ## Outputs
