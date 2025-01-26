@@ -50,7 +50,7 @@ inputs:
     required: false
   github_token:
     description: "Generated GITHUB_TOKEN or Personal Access Token for deploying report to GitHub pages and pr_comment"
-    required: false
+    default: '${{ github.token }}'
   github_pages_branch:
     description: "Target branch for Deploying to GitHub Pages"
     default: 'gh-pages'

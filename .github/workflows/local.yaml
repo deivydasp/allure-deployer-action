@@ -74,7 +74,6 @@ jobs:
         with:
           target: 'github'
           github_pages_branch: 'gh-pages'
-          github_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
           allure_results_path: 'allure-results'
           show_history: ${{github.event.inputs.show-history}}
           retries: ${{github.event.inputs.retries}}
@@ -94,7 +93,6 @@ jobs:
         with:
           target: 'github'
           github_pages_branch: 'gh-pages'
-          github_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
           allure_results_path: 'allure-results'
           report_name: ${{github.event.inputs.report-name}}
           language: ${{github.event.inputs.report-lang}}
