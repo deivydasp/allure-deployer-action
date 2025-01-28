@@ -62,7 +62,6 @@ export function main() {
         const runtimeDir = await getRuntimeDirectory();
         const reportOutputPath = getInputOrUndefined('output');
         const REPORTS_DIR = reportOutputPath ? reportOutputPath : path.join(runtimeDir, "allure-report");
-        const prefix= core.getInput("gcp_bucket_prefix")
         const args: GitHubArgInterface = {
             runtimeCredentialDir: path.join(runtimeDir, "credentials/key.json"),
             fileProcessingConcurrency: 10,
@@ -72,7 +71,6 @@ export function main() {
             REPORTS_DIR,
             retries,
             showHistory,
-            prefix: prefix !== '' ? prefix : undefined,
             uploadRequired: showHistory || retries > 0,
             downloadRequired: showHistory || retries > 0,
             target,
@@ -80,7 +78,7 @@ export function main() {
         };
 
         if (target === Target.FIREBASE) {
-            const credentials = core.getInput("google_credentials_json");
+            const credentials = getInputOrUndefined("google_credentials_json");
             if (!credentials) {
                 core.setFailed("Error: Firebase Hosting requires a valid 'google_credentials_json'.");
                 return;
@@ -89,8 +87,7 @@ export function main() {
             args.googleCredentialData = credentials;
             args.firebaseProjectId = firebaseProjectId;
             args.host = getFirebaseHost({firebaseProjectId, REPORTS_DIR})
-            const storageBucket = core.getInput("storage_bucket")
-            args.storageBucket = storageBucket !== '' ? storageBucket : undefined;
+            args.storageBucket = getInputOrUndefined('storage_bucket');
         } else {
             const token = core.getInput("github_token");
             if (!token) {
@@ -165,14 +162,14 @@ async function getCloudStorageService({storageBucket, googleCredentialData}: {
     googleCredentialData: string
 }): Promise<GoogleStorageService> {
     try {
-        const credentials = JSON.parse(googleCredentialData!);
+        const credentials = JSON.parse(googleCredentialData);
         const bucket = new GCPStorage({credentials}).bucket(storageBucket);
         const [exists] = await bucket.exists();
         if (!exists) {
             console.log(`GCP storage bucket '${bucket.name}' does not exist. History and Retries will be disabled.`);
             process.exit(1)
         }
-        return new GoogleStorageService(bucket, core.getInput("prefix"))
+        return new GoogleStorageService(bucket, getInputOrUndefined('gcp_bucket_prefix'))
     } catch (error) {
         handleStorageError(error);
         process.exit(1);
