@@ -62,7 +62,6 @@ export function main() {
         const runtimeDir = await getRuntimeDirectory();
         const reportOutputPath = getInputOrUndefined('output');
         const REPORTS_DIR = reportOutputPath ? reportOutputPath : path.join(runtimeDir, "allure-report");
-        const reportName = core.getInput("report_name");
         const prefix= core.getInput("gcp_bucket_prefix")
         const args: GitHubArgInterface = {
             runtimeCredentialDir: path.join(runtimeDir, "credentials/key.json"),
@@ -71,7 +70,6 @@ export function main() {
             RESULTS_STAGING_PATH: path.join(runtimeDir, "allure-results"),
             ARCHIVE_DIR: path.join(runtimeDir, "archive"),
             REPORTS_DIR,
-            reportName: reportName !== '' ? reportName : undefined,
             retries,
             showHistory,
             prefix: prefix !== '' ? prefix : undefined,
@@ -212,7 +210,9 @@ async function generateAllureReport({
 
 function createExecutor(reportUrl?: string): ExecutorInterface {
     const buildName = `GitHub Run ID: ${github.context.runId}`;
+    const reportName = getInputOrUndefined('report_name');
     return {
+        reportName: reportName ?? 'Allure Report',
         name: "Allure Deployer Action",
         reportUrl,
         buildUrl: createGitHubBuildUrl(),
