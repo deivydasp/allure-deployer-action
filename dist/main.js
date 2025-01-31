@@ -1,6 +1,6 @@
 import * as process from "node:process";
 import path from "node:path";
-import { Allure, ConsoleNotifier, copyFiles, FirebaseHost, FirebaseService, getReportStats, getRuntimeDirectory, GoogleStorage, GoogleStorageService, NotificationData, NotifyHandler, SlackNotifier, SlackService, validateResultsPaths, } from "allure-deployer-shared";
+import { Allure, ConsoleNotifier, copyFiles, FirebaseHost, FirebaseService, getReportStats, getRuntimeDirectory, GoogleStorage, GoogleStorageService, NotifyHandler, SlackNotifier, SlackService, validateResultsPaths, } from "allure-deployer-shared";
 import { Storage as GCPStorage } from "@google-cloud/storage";
 import { GitHubService } from "./services/github.service.js";
 import { GitHubNotifier } from "./features/messaging/github-notifier.js";
@@ -85,7 +85,7 @@ async function executeDeployment(args) {
         const allure = new Allure({ args });
         await generateAllureReport({ allure, reportUrl });
         const [resultsStats] = await finalizeDeployment({ args, storage });
-        await sendNotifications(args, resultsStats, reportUrl);
+        await sendNotifications(args, resultsStats, reportUrl, allure.environments);
     }
     catch (error) {
         console.error("Deployment failed:", error);
@@ -183,7 +183,7 @@ async function finalizeDeployment({ args, storage, }) {
     console.log("Deployment finalized.");
     return result;
 }
-async function sendNotifications(args, resultsStats, reportUrl) {
+async function sendNotifications(args, resultStatus, reportUrl, environment) {
     const notifiers = [new ConsoleNotifier(args)];
     const slackChannel = core.getInput("slack_channel");
     const slackToken = core.getInput("slack_token");
@@ -196,7 +196,7 @@ async function sendNotifications(args, resultsStats, reportUrl) {
     const prComment = core.getBooleanInput("pr_comment");
     const githubNotifierClient = new GitHubService();
     notifiers.push(new GitHubNotifier({ client: githubNotifierClient, token, prNumber, prComment }));
-    const notificationData = new NotificationData(resultsStats, reportUrl);
+    const notificationData = { resultStatus, reportUrl, environment };
     await new NotifyHandler(notifiers).sendNotifications(notificationData);
 }
 function handleStorageError(error) {

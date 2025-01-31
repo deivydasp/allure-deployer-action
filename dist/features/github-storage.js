@@ -1,4 +1,4 @@
-import { copyFiles, isFileTypeAllure, Order } from "allure-deployer-shared";
+import { isFileTypeAllure, Order } from "allure-deployer-shared";
 import path from "node:path";
 import fs from "fs/promises";
 import pLimit from "p-limit";
@@ -162,7 +162,7 @@ export class GithubStorage {
         }
         else {
             resultPath = path.join(os.tmpdir(), 'allure-deployer-results-temp');
-            await copyFiles({ from: this.args.RESULTS_PATHS, to: resultPath });
+            await this.copyFiles({ from: this.args.RESULTS_PATHS, to: resultPath });
         }
         await this.provider.upload(resultPath, RESULTS_ARCHIVE_NAME);
     }
@@ -171,5 +171,43 @@ export class GithubStorage {
      */
     async uploadHistory() {
         await this.provider.upload(this.getHistoryFolder(), HISTORY_ARCHIVE_NAME);
+    }
+    async copyFiles({ from, to, concurrency = 10, overwrite = false, exclude = ['executor.json', 'environment.properties'] }) {
+        const limit = pLimit(concurrency); // Limit concurrency
+        const copyPromises = [];
+        let successCount = 0;
+        // Ensure the destination directory exists
+        await fs.mkdir(to, { recursive: true });
+        // Iterate over each directory in the `from` array
+        for (const dir of from) {
+            try {
+                // Get the list of files from the current directory
+                const files = await fs.readdir(dir, { withFileTypes: true });
+                for (const file of files) {
+                    // Skip directories, process files only
+                    if (!file.isFile())
+                        continue;
+                    // Skip excluded files
+                    if (exclude.includes(path.basename(file.name)))
+                        continue;
+                    copyPromises.push(limit(async () => {
+                        try {
+                            const fileToCopy = path.join(dir, file.name);
+                            const destination = path.join(to, file.name);
+                            await fs.cp(fileToCopy, destination, { force: overwrite, errorOnExist: false });
+                            successCount++;
+                        }
+                        catch (error) {
+                            console.log(`Error copying file ${file.name} from ${dir}:`, error);
+                        }
+                    }));
+                }
+            }
+            catch (error) {
+                console.log(`Error reading directory ${dir}:`, error);
+            }
+        }
+        await Promise.all(copyPromises); // Wait for all copy operations to complete
+        return successCount;
     }
 }

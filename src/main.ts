@@ -112,7 +112,7 @@ async function executeDeployment(args: GitHubArgInterface) {
         const allure = new Allure({args});
         await generateAllureReport({allure, reportUrl});
         const [resultsStats] = await finalizeDeployment({args, storage});
-        await sendNotifications(args, resultsStats, reportUrl);
+        await sendNotifications(args, resultsStats, reportUrl, allure.environments);
     } catch (error) {
         console.error("Deployment failed:", error);
         process.exit(1);
@@ -243,8 +243,9 @@ async function finalizeDeployment({
 
 async function sendNotifications(
     args: GitHubArgInterface,
-    resultsStats: ReportStatistic,
-    reportUrl?: string
+    resultStatus: ReportStatistic,
+    reportUrl?: string,
+    environment?: Map<string, string>
 ) {
     const notifiers: Notifier[] = [new ConsoleNotifier(args)];
     const slackChannel = core.getInput("slack_channel");
@@ -260,7 +261,7 @@ async function sendNotifications(
     const prComment = core.getBooleanInput("pr_comment");
     const githubNotifierClient = new GitHubService()
     notifiers.push(new GitHubNotifier({client: githubNotifierClient, token, prNumber, prComment}));
-    const notificationData = new NotificationData(resultsStats, reportUrl);
+    const notificationData: NotificationData = {resultStatus, reportUrl, environment}
     await new NotifyHandler(notifiers).sendNotifications(notificationData);
 }
 
