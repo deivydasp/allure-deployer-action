@@ -53,12 +53,12 @@ jobs:
           target: 'firebase'
           google_credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
           allure_results_path: 'allure-results'
-          storage_bucket: ${{secrets.STORAGE_BUCKET}}
+          gcs_bucket: ${{secrets.STORAGE_BUCKET}}
           slack_channel: ${{secrets.SLACK_CHANNEL}}
           slack_token: ${{secrets.SLACK_TOKEN}}
           show_history: ${{github.event.inputs.show-history}}
           retries: ${{github.event.inputs.retries}}
-          gcp_bucket_prefix: 'test-action-firebase'
+          gcs_bucket_prefix: 'test-action-firebase'
           report_name: ${{github.event.inputs.report-name}}
           language: ${{github.event.inputs.report-lang}}
           github_subfolder: ${{github.event.inputs.subfolder}}

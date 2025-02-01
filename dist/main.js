@@ -37,7 +37,10 @@ export function main() {
         const runtimeDir = await getRuntimeDirectory();
         const reportOutputPath = getInputOrUndefined('output');
         const REPORTS_DIR = reportOutputPath ? reportOutputPath : path.join(runtimeDir, "allure-report");
+        const storageRequired = showHistory || retries > 0;
         const args = {
+            downloadRequired: storageRequired,
+            uploadRequired: storageRequired,
             runtimeCredentialDir: path.join(runtimeDir, "credentials/key.json"),
             fileProcessingConcurrency: 10,
             RESULTS_PATHS: await validateResultsPaths(resultsPaths),
@@ -46,8 +49,7 @@ export function main() {
             REPORTS_DIR,
             retries,
             showHistory,
-            uploadRequired: showHistory || retries > 0,
-            downloadRequired: showHistory || retries > 0,
+            storageRequired,
             target,
             reportLanguage: getInputOrUndefined('language')
         };
@@ -61,7 +63,7 @@ export function main() {
             args.googleCredentialData = credentials;
             args.firebaseProjectId = firebaseProjectId;
             args.host = getFirebaseHost({ firebaseProjectId, REPORTS_DIR });
-            args.storageBucket = getInputOrUndefined('storage_bucket');
+            args.storageBucket = getInputOrUndefined('gcs_bucket');
         }
         else {
             const token = core.getInput("github_token");
@@ -80,7 +82,7 @@ export function main() {
 }
 async function executeDeployment(args) {
     try {
-        const storage = await initializeStorage(args);
+        const storage = args.storageRequired ? await initializeStorage(args) : undefined;
         const [reportUrl] = await stageDeployment(args, storage);
         const allure = new Allure({ args });
         await generateAllureReport({ allure, reportUrl });
@@ -108,16 +110,25 @@ function getGitHubHost({ token, REPORTS_DIR, }) {
     return new GithubHost(new GithubPagesService(config));
 }
 async function initializeStorage(args) {
-    if (args.target === Target.GITHUB) {
-        return new GithubStorage(new ArtifactService(args.githubToken), args);
+    switch (args.target) {
+        case Target.GITHUB: {
+            return new GithubStorage(new ArtifactService(args.githubToken), args);
+        }
+        case Target.FIREBASE: {
+            if (args.storageBucket && args.googleCredentialData) {
+                return new GoogleStorage(await getCloudStorageService({
+                    storageBucket: args.storageBucket,
+                    googleCredentialData: args.googleCredentialData
+                }), args);
+            }
+            else if (!args.storageBucket) {
+                console.log('No storage bucket provided. History and Retries will be disabled.');
+            }
+            return undefined;
+        }
+        default:
+            return undefined;
     }
-    else if (args.storageBucket && args.googleCredentialData) {
-        return new GoogleStorage(await getCloudStorageService({
-            storageBucket: args.storageBucket,
-            googleCredentialData: args.googleCredentialData
-        }), args);
-    }
-    return undefined;
 }
 async function getCloudStorageService({ storageBucket, googleCredentialData }) {
     try {
@@ -128,7 +139,7 @@ async function getCloudStorageService({ storageBucket, googleCredentialData }) {
             console.log(`GCP storage bucket '${bucket.name}' does not exist. History and Retries will be disabled.`);
             process.exit(1);
         }
-        return new GoogleStorageService(bucket, getInputOrUndefined('gcp_bucket_prefix'));
+        return new GoogleStorageService(bucket, getInputOrUndefined('gcs_bucket_prefix'));
     }
     catch (error) {
         handleStorageError(error);

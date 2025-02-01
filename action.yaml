@@ -15,8 +15,11 @@ inputs:
   google_credentials_json:
     description: "Set Firebase (Google Cloud) credentials for History, Retries and Firebase Hosting"
     required: false
-  storage_bucket:
-    description: "A Google Cloud Storage bucket for managing Allure History and Retries"
+  gcs_bucket:
+    description: "Google Cloud/Firebase storage bucket to backup Allure History and Retries"
+    required: false
+  gcs_bucket_prefix:
+    description: "Google Cloud/Firebase storage bucket path prefix to back up Allure results and history"
     required: false
   report_name:
     description: "Title of your report"
@@ -39,9 +42,6 @@ inputs:
   show_history:
     description: "Show history in the test report (true/false)"
     default: "true"
-  gcp_bucket_prefix:
-    description: "The GCP storage bucket path to back up Allure results and history files"
-    required: false
   pr_comment:
     description: "Post test report information as pull request comment. Requires `github_token` to be set with permission  "
     default: "true"

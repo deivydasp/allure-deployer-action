@@ -55,7 +55,7 @@ jobs:
           target: 'firebase'
           allure_results_path: 'allure-results'
           google_credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
-          storage_bucket: ${{vars.STORAGE_BUCKET}}
+          gcs_bucket: ${{vars.STORAGE_BUCKET}}
           show_history: 'true'
           retries: 5
 ```
@@ -114,7 +114,7 @@ jobs:
           target: 'firebase'
           allure_results_path: 'allure-results_1,allure-results_2,allure-results_3'
           google_credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
-          storage_bucket: ${{vars.STORAGE_BUCKET}}
+          gcs_bucket: ${{vars.STORAGE_BUCKET}}
           show_history: 'true'
           retries: 5
 ```
@@ -157,7 +157,7 @@ jobs:
 | `github_token`            | GitHub token or personal access token to enable GitHub pages hosting and `pr_comment`                                                | `github.token`   | No        |
 | `report_name`             | Custom name/title for the report.                                                                                                    | `Allure`         | No        |
 | `language`                | Allure report language                                                                                                               | `en`             | No        |
-| `storage_bucket`          | Google Cloud Storage bucket name for **History** and **Retries** when target is `firebase`.                                          | None             | No        |
+| `gcs_bucket`              | Google Cloud Storage bucket name for **History** and **Retries** when target is `firebase`.                                          | None             | No        |
 | `show_history`            | Display history from previous runs.                                                                                                  | `true`           | No        |
 | `retries`                 | Number of previous runs to display as retries.                                                                                       | 0                | No        |
 | `output`                  | Directory to generate the Allure report in.                                                                                          | None             | No        |
@@ -166,7 +166,7 @@ jobs:
 | `pr_comment`              | Post report information as a pull request comment. Requires GitHub token with `pull_requests: write` and `issues: write` permissions | `true`           | No        |
 | `github_pages_branch`     | Branch used for GitHub Pages deployments.                                                                                            | `gh-pages`       | No        |
 | `github_subfolder`        | Sub directory to write the test reports files in Git                                                                                 | None             | No        |
-| `gcp_bucket_prefix`       | Path prefix for archived files in the GCP storage bucket when target is `firebase` .                                                 | None             | No        |
+| `gcs_bucket_prefix`       | Path prefix for archived files in the GCP storage bucket when target is `firebase` .                                                 | None             | No        |
 
 
 

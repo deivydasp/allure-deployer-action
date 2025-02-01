@@ -3,17 +3,17 @@ on:
   workflow_dispatch:
     inputs:
       job:
-        description: 'Select the job to run'
+        description: 'Job to run'
         type: choice
         options:
-          - test-action-gh-pages
-          - test-action-firebase
-        default: test-action-gh-pages
+          - gh-pages
+          - firebase
+        default: gh-pages
       retries:
         description: 'Number of test runs to show as retries in report'
         default: '10'
       show-history:
-        description: 'Show keep history in report'
+        description: 'Show history in report'
         type: boolean
         default: true
       report-name:
@@ -30,13 +30,13 @@ on:
           - de
 
 jobs:
-  test-action-firebase:
-    if: ${{ github.event.inputs.job == 'test-action-firebase' }}
+  firebase:
+    if: ${{ github.event.inputs.job == 'firebase' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4.1.5
       - name: Deploy Reports to Firebase with History and Retries
-        uses: cybersokari/allure-deployer-action@v1.5.0
+        uses: cybersokari/allure-deployer-action@v1.7.5
         with:
           target: 'firebase'
           google_credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
@@ -46,24 +46,21 @@ jobs:
           slack_token: ${{secrets.SLACK_TOKEN}}
           show_history: ${{github.event.inputs.show-history}}
           retries: ${{github.event.inputs.retries}}
-          prefix: 'test-action-firebase'
+          gcp_bucket_prefix: '${{github.repository}}/examples-firebase'
 
-  test-action-gh-pages:
-    if: ${{ github.event.inputs.job == 'test-action-gh-pages' }}
+  gh-pages:
+    if: ${{ github.event.inputs.job == 'gh-pages' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: write
     steps:
       - uses: actions/checkout@v4.1.5
       - name: Deploy Reports to GitHub pages with History and Retries
-        uses: cybersokari/allure-deployer-action@v1.5.0
+        uses: cybersokari/allure-deployer-action@v1.7.5
         with:
           target: 'github'
-          google_credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
-          github_pages_branch: 'gh-pages'
-          github_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
           allure_results_path: 'allure-results'
-          storage_bucket: ${{secrets.STORAGE_BUCKET}}
           show_history: ${{github.event.inputs.show-history}}
           retries: ${{github.event.inputs.retries}}
-          prefix: 'test-action-gh-pages'
+          github_subfolder: 'examples-gh-pages'
