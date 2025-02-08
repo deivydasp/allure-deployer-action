@@ -11,8 +11,7 @@ export class GithubPagesService {
         this.repo = repo;
         this.subFolder = subFolder;
         this.reportDir = reportDir;
-        // Authenticate using token (for HTTPS)
-        this.git.addConfig('http.extraHeader', `Authorization: token ${token}`);
+        this.token = token;
     }
     async deployPages() {
         if (!fs.existsSync(this.reportDir)) {
@@ -34,12 +33,13 @@ export class GithubPagesService {
     async setupBranch() {
         // Initialize repository and fetch branch info
         await this.git.init();
-        const email = `${github.context.payload.sender?.id}+${github.context.actor}@users.noreply.github.com`;
+        // Authenticate using token (for HTTPS)
+        this.git.addConfig('http.extraHeader', `Authorization: token ${this.token}`, true, 'local');
         const actor = github.context.actor;
-        this.git.addConfig('user.email', email);
-        this.git.addConfig('user.name', actor);
+        const email = `${github.context.payload.sender?.id}+${actor}@users.noreply.github.com`;
+        this.git.addConfig('user.email', email).addConfig('user.name', actor);
         console.log(`Email: ${email}`);
-        console.log(`Actor: ${email}`);
+        console.log(`Actor: ${actor}`);
         await this.git.addRemote('origin', `https://github.com/${this.owner}/${this.repo}.git`);
         await this.git.fetch('origin', this.branch); // Fetch only the target branch
         // Check if the remote branch exists
