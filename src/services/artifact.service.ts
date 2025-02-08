@@ -1,9 +1,8 @@
 import {Order, StorageProvider} from "allure-deployer-shared";
-import { DefaultArtifactClient} from '@actions/artifact'
+import {DefaultArtifactClient} from '@actions/artifact'
 import pLimit from "p-limit";
 import {getAbsoluteFilePaths} from "../utilities/util.js";
 import {Octokit} from "@octokit/rest";
-import github from "@actions/github";
 import https from 'https';
 import fs from "fs";
 import path from "node:path";
@@ -28,7 +27,13 @@ export interface ArtifactResponse {
     created_at: string | null;
     expires_at: string | null;
     updated_at: string | null;
-    workflow_run?: WorkflowRun | {}| null;
+    workflow_run?: WorkflowRun | {} | null;
+}
+
+export interface ArtifactServiceConfig {
+    token: string;
+    owner: string;
+    repo: string;
 }
 
 export class ArtifactService implements StorageProvider {
@@ -36,16 +41,20 @@ export class ArtifactService implements StorageProvider {
     prefix: string | undefined;
     artifactClient: DefaultArtifactClient;
     octokit: Octokit;
+    owner: string;
+    repo: string;
 
-    constructor(readonly token: string) {
+    constructor({token, repo, owner}: ArtifactServiceConfig) {
         this.artifactClient = new DefaultArtifactClient();
-        this.octokit = new Octokit({auth: this.token});
+        this.octokit = new Octokit({auth: token});
+        this.owner = owner;
+        this.repo = repo;
     }
 
     async deleteFile(id: number): Promise<void> {
         await this.octokit.request('DELETE /repos/{owner}/{repo}/actions/artifacts/{artifact_id}', {
-            owner: github.context.repo.owner,
-            repo: github.context.repo.repo,
+            owner: this.owner,
+            repo: this.repo,
             artifact_id: id,
             headers: {
                 'X-GitHub-Api-Version': '2022-11-28'
@@ -68,16 +77,16 @@ export class ArtifactService implements StorageProvider {
         for (const file of files) {
             promises.push(limit(async (): Promise<string> => {
 
-                const response = await this.octokit.request('GET /repos/{owner}/{repo}/actions/artifacts/{artifact_id}/{archive_format}', {
-                    owner: github.context.repo.owner,
-                    repo: github.context.repo.repo,
+                const {url} = await this.octokit.request('GET /repos/{owner}/{repo}/actions/artifacts/{artifact_id}/{archive_format}', {
+                    owner: this.owner,
+                    repo: this.repo,
                     artifact_id: file.id,
                     archive_format: 'zip',
                     headers: {
                         'X-GitHub-Api-Version': '2022-11-28'
                     }
                 })
-                const artifactUrl = response.url;
+                const artifactUrl = url;
                 const filePath = path.join(destination, `${file.id}.zip`);
                 return new Promise((resolve, reject) => {
                     const fileStream = fs.createWriteStream(filePath);
@@ -92,7 +101,7 @@ export class ArtifactService implements StorageProvider {
                             resolve(filePath);
                         });
                     }).on('error', (err) => {
-                        fs.unlink(filePath, () => reject(err) ); // Delete the file if an error occurs
+                        fs.unlink(filePath, () => reject(err)); // Delete the file if an error occurs
                     });
                 });
             }))
@@ -106,10 +115,9 @@ export class ArtifactService implements StorageProvider {
         maxResults?: number;
         endOffset?: string
     }): Promise<ArtifactResponse[]> {
-        const octokit = new Octokit({auth: this.token});
-        const response = await octokit.request('GET /repos/{owner}/{repo}/actions/artifacts', {
-            owner: github.context.repo.owner,
-            repo: github.context.repo.repo,
+        const response = await this.octokit.request('GET /repos/{owner}/{repo}/actions/artifacts', {
+            owner: this.owner,
+            repo: this.repo,
             name: matchGlob,
             per_page: maxResults,
             headers: {

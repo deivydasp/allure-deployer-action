@@ -9,8 +9,7 @@ export class GithubHost implements HostingProvider{
     }
 
     async init(): Promise<string> {
-        await this.client.setupBranch()
-        return `https://${this.client.owner}.github.io/${this.client.repo}/${this.client.subFolder}`
+        return await this.client.setupBranch()
     }
 
 }

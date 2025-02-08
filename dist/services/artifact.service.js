@@ -3,20 +3,20 @@ import { DefaultArtifactClient } from '@actions/artifact';
 import pLimit from "p-limit";
 import { getAbsoluteFilePaths } from "../utilities/util.js";
 import { Octokit } from "@octokit/rest";
-import github from "@actions/github";
 import https from 'https';
 import fs from "fs";
 import path from "node:path";
 export class ArtifactService {
-    constructor(token) {
-        this.token = token;
+    constructor({ token, repo, owner }) {
         this.artifactClient = new DefaultArtifactClient();
-        this.octokit = new Octokit({ auth: this.token });
+        this.octokit = new Octokit({ auth: token });
+        this.owner = owner;
+        this.repo = repo;
     }
     async deleteFile(id) {
         await this.octokit.request('DELETE /repos/{owner}/{repo}/actions/artifacts/{artifact_id}', {
-            owner: github.context.repo.owner,
-            repo: github.context.repo.repo,
+            owner: this.owner,
+            repo: this.repo,
             artifact_id: id,
             headers: {
                 'X-GitHub-Api-Version': '2022-11-28'
@@ -31,16 +31,16 @@ export class ArtifactService {
         const promises = [];
         for (const file of files) {
             promises.push(limit(async () => {
-                const response = await this.octokit.request('GET /repos/{owner}/{repo}/actions/artifacts/{artifact_id}/{archive_format}', {
-                    owner: github.context.repo.owner,
-                    repo: github.context.repo.repo,
+                const { url } = await this.octokit.request('GET /repos/{owner}/{repo}/actions/artifacts/{artifact_id}/{archive_format}', {
+                    owner: this.owner,
+                    repo: this.repo,
                     artifact_id: file.id,
                     archive_format: 'zip',
                     headers: {
                         'X-GitHub-Api-Version': '2022-11-28'
                     }
                 });
-                const artifactUrl = response.url;
+                const artifactUrl = url;
                 const filePath = path.join(destination, `${file.id}.zip`);
                 return new Promise((resolve, reject) => {
                     const fileStream = fs.createWriteStream(filePath);
@@ -63,10 +63,9 @@ export class ArtifactService {
         return await Promise.all(promises);
     }
     async getFiles({ matchGlob, order = Order.byOldestToNewest, maxResults, endOffset }) {
-        const octokit = new Octokit({ auth: this.token });
-        const response = await octokit.request('GET /repos/{owner}/{repo}/actions/artifacts', {
-            owner: github.context.repo.owner,
-            repo: github.context.repo.repo,
+        const response = await this.octokit.request('GET /repos/{owner}/{repo}/actions/artifacts', {
+            owner: this.owner,
+            repo: this.repo,
             name: matchGlob,
             per_page: maxResults,
             headers: {

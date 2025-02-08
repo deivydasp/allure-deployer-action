@@ -1,7 +1,7 @@
 import * as process from "node:process";
 import path from "node:path";
 import {
-    Allure,
+    Allure, AllureConfig,
     ArgsInterface,
     ConsoleNotifier,
     copyFiles,
@@ -28,9 +28,9 @@ import {GitHubConfig, GithubPagesService} from "./services/github-pages.service.
 import {GithubHost} from "./features/hosting/github.host.js";
 import github from "@actions/github";
 import core from "@actions/core";
-import {setGoogleCredentialsEnv, validateSlackConfig} from "./utilities/util.js";
+import {copyDirectory, setGoogleCredentialsEnv, validateSlackConfig} from "./utilities/util.js";
 import {GitHubArgInterface, Target} from "./interfaces/args.interface.js";
-import {ArtifactService} from "./services/artifact.service.js";
+import {ArtifactService, ArtifactServiceConfig} from "./services/artifact.service.js";
 import {GithubStorage} from "./features/github-storage.js";
 
 function getTarget(): Target {
@@ -47,36 +47,37 @@ function getRetries(): number {
     return parseInt(retries !== '' ? retries : "0", 10);
 }
 
-function getInputOrUndefined(name: string): string | undefined {
-    const input = core.getInput(name);
-    return input !== '' ? input : undefined;
+function getInputOrUndefined(name: string, required?: boolean): string | undefined {
+    const input: string = core.getInput(name, {required});
+    return input || undefined; // Undefined if empty string
 }
 
 export function main() {
     (async () => {
 
-        const target = getTarget();
+        const target: Target = getTarget();
         const resultsPaths = core.getInput("allure_results_path", {required: true});
         const showHistory = core.getBooleanInput("show_history");
-        const retries = getRetries()
+        const retries: number = getRetries()
         const runtimeDir = await getRuntimeDirectory();
-        const reportOutputPath = getInputOrUndefined('output');
-        const REPORTS_DIR = reportOutputPath ? reportOutputPath : path.join(runtimeDir, "allure-report");
-        const storageRequired = showHistory || retries > 0
+        const gitWorkspace = path.posix.join(runtimeDir, 'report')
+        const reportDir = path.posix.join(gitWorkspace, core.getInput('github_subfolder'));
+        const storageRequired: boolean = showHistory || retries > 0
         const args: GitHubArgInterface = {
+            reportLanguage: getInputOrUndefined('language'),
             downloadRequired: storageRequired,
             uploadRequired: storageRequired,
-            runtimeCredentialDir: path.join(runtimeDir, "credentials/key.json"),
+            runtimeCredentialDir: path.posix.join(runtimeDir, "credentials/key.json"),
             fileProcessingConcurrency: 10,
             RESULTS_PATHS: await validateResultsPaths(resultsPaths),
-            RESULTS_STAGING_PATH: path.join(runtimeDir, "allure-results"),
-            ARCHIVE_DIR: path.join(runtimeDir, "archive"),
-            REPORTS_DIR,
+            RESULTS_STAGING_PATH: path.posix.join(runtimeDir, "allure-results"),
+            ARCHIVE_DIR: path.posix.join(runtimeDir, "archive"),
+            REPORTS_DIR: reportDir,
             retries,
             showHistory,
             storageRequired,
             target,
-            reportLanguage: getInputOrUndefined('language')
+            gitWorkspace
         };
 
         if (target === Target.FIREBASE) {
@@ -88,7 +89,7 @@ export function main() {
             let firebaseProjectId = (await setGoogleCredentialsEnv(credentials)).project_id;
             args.googleCredentialData = credentials;
             args.firebaseProjectId = firebaseProjectId;
-            args.host = getFirebaseHost({firebaseProjectId, REPORTS_DIR})
+            args.host = getFirebaseHost({firebaseProjectId, REPORTS_DIR: reportDir})
             args.storageBucket = getInputOrUndefined('gcs_bucket');
         } else {
             const token = core.getInput("github_token");
@@ -99,7 +100,8 @@ export function main() {
             args.githubToken = token;
             args.host = getGitHubHost({
                 token,
-                REPORTS_DIR,
+                reportDir,
+                gitWorkspace
             });
         }
         await executeDeployment(args);
@@ -111,7 +113,12 @@ async function executeDeployment(args: GitHubArgInterface) {
 
         const storage = args.storageRequired ? await initializeStorage(args) : undefined
         const [reportUrl] = await stageDeployment(args, storage);
-        const allure = new Allure({args});
+        const config: AllureConfig = {
+            RESULTS_STAGING_PATH: args.RESULTS_STAGING_PATH,
+            REPORTS_DIR: args.REPORTS_DIR,
+            reportLanguage: args.reportLanguage
+        }
+        const allure = new Allure({config});
         await generateAllureReport({allure, reportUrl});
         const [resultsStats] = await finalizeDeployment({args, storage});
         await sendNotifications(args, resultsStats, reportUrl, allure.environments);
@@ -130,19 +137,20 @@ function getFirebaseHost({firebaseProjectId, REPORTS_DIR}: {
 
 function getGitHubHost({
                            token,
-                           REPORTS_DIR,
+                           reportDir, gitWorkspace
                        }: {
     token: string;
-    REPORTS_DIR: string;
+    reportDir: string;
+    gitWorkspace: string;
 }): GithubHost {
+    const subFolder = getInputOrUndefined('github_subfolder', true)!;
+    const branch = getInputOrUndefined('github_pages_branch', true)!;
     const config: GitHubConfig = {
-        runId: github.context.runId.toString(),
         owner: github.context.repo.owner,
         repo: github.context.repo.repo,
-        subFolder: path.join(core.getInput('github_subfolder'), `${github.context.runNumber}`),
-        branch: core.getInput("github_pages_branch"),
-        filesDir: REPORTS_DIR,
-        token: token
+        workspace: gitWorkspace,
+        token, subFolder, branch,
+        reportDir
     }
     return new GithubHost(new GithubPagesService(config));
 }
@@ -150,7 +158,12 @@ function getGitHubHost({
 async function initializeStorage(args: GitHubArgInterface): Promise<IStorage | undefined> {
     switch (args.target) {
         case Target.GITHUB: {
-            return new GithubStorage(new ArtifactService(args.githubToken!), args)
+            const config: ArtifactServiceConfig = {
+                owner: github.context.repo.owner,
+                repo: github.context.repo.repo,
+                token: args.githubToken!
+            }
+            return new GithubStorage(new ArtifactService(config), args)
         }
         case Target.FIREBASE: {
             if (args.storageBucket && args.googleCredentialData) {
@@ -195,7 +208,7 @@ async function stageDeployment(args: ArgsInterface, storage?: IStorage) {
         concurrency: args.fileProcessingConcurrency,
     });
     const result = await Promise.all([
-        args.host?.init(args.clean),
+        args.host?.init(),
         copyResultsFiles,
         args.downloadRequired ? storage?.stageFilesFromStorage() : undefined,
     ]);
@@ -243,13 +256,25 @@ async function finalizeDeployment({
     storage?: IStorage;
 }) {
     console.log("Finalizing deployment...");
-    const result = await Promise.all([
+    const result: [ReportStatistic, any, void, void] = await Promise.all([
         getReportStats(args.REPORTS_DIR),
         args.host?.deploy(),
         storage?.uploadArtifacts(),
+        copyReportToOutput(args.REPORTS_DIR),
     ]);
     console.log("Deployment finalized.");
     return result;
+}
+
+async function copyReportToOutput(reportDir: string): Promise<void> {
+    const reportOutputPath = getInputOrUndefined('output');
+    if (reportOutputPath) {
+        try {
+            await copyDirectory(reportDir, reportOutputPath);
+        }catch (e) {
+            console.error(e);
+        }
+    }
 }
 
 async function sendNotifications(
@@ -258,13 +283,13 @@ async function sendNotifications(
     reportUrl?: string,
     environment?: Map<string, string>
 ) {
-    const notifiers: Notifier[] = [new ConsoleNotifier(args)];
+    const notifiers: Notifier[] = [new ConsoleNotifier()];
     const slackChannel = core.getInput("slack_channel");
     const slackToken = core.getInput("slack_token");
 
     if (validateSlackConfig(slackChannel, slackToken)) {
         const slackClient = new SlackService({channel: slackChannel, token: slackToken});
-        notifiers.push(new SlackNotifier(slackClient, args));
+        notifiers.push(new SlackNotifier(slackClient));
     }
 
     const token = args.githubToken

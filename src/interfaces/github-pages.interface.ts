@@ -4,5 +4,5 @@ export interface GithubPagesInterface {
     repo: string;
     subFolder: string;
     deployPages(): Promise<void>;
-    setupBranch(): Promise<void>;
+    setupBranch(): Promise<any>;
 }

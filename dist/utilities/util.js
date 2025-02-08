@@ -111,3 +111,20 @@ export function getAbsoluteFilePaths(dir) {
     }
     return filePaths;
 }
+export async function copyDirectory(sourceDir, destDir) {
+    if (!fsSync.existsSync(destDir)) {
+        await fs.mkdir(destDir, { recursive: true });
+    }
+    const entries = await fs.readdir(sourceDir, { withFileTypes: true });
+    for (const entry of entries) {
+        const sourcePath = path.join(sourceDir, entry.name);
+        const destPath = path.join(destDir, entry.name);
+        if (entry.isDirectory()) {
+            await copyDirectory(sourcePath, destPath); // Recursively copy subdirectory
+        }
+        else {
+            await fs.copyFile(sourcePath, destPath); // Copy file
+        }
+    }
+    console.log(`Copied directory from ${sourceDir} to ${destDir}`);
+}
