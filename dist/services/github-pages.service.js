@@ -13,8 +13,6 @@ export class GithubPagesService {
         this.reportDir = reportDir;
         // Authenticate using token (for HTTPS)
         this.git.addConfig('http.extraHeader', `Authorization: token ${token}`);
-        this.git.addConfig('user.email', '41898282+github-actions[bot]@users.noreply.github.com');
-        this.git.addConfig('user.name', 'github-actions[bot]');
     }
     async deployPages() {
         if (!fs.existsSync(this.reportDir)) {
@@ -36,6 +34,8 @@ export class GithubPagesService {
     async setupBranch() {
         // Initialize repository and fetch branch info
         await this.git.init();
+        this.git.addConfig('user.email', '41898282+github-actions[bot]@users.noreply.github.com');
+        this.git.addConfig('user.name', 'github-actions[bot]');
         await this.git.addRemote('origin', `https://github.com/${this.owner}/${this.repo}.git`);
         await this.git.fetch('origin', this.branch); // Fetch only the target branch
         // Check if the remote branch exists
