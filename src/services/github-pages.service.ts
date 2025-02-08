@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "node:path";
 import simpleGit, {SimpleGit} from "simple-git";
-import {GithubPagesInterface} from "../interfaces/github-pages.interface";
+import {GithubPagesInterface} from "../interfaces/github-pages.interface.js";
 import * as console from "node:console";
 import github from "@actions/github";
 
