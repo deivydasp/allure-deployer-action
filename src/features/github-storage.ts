@@ -171,7 +171,7 @@ export class GithubStorage implements IStorage {
             resultPath = this.args.RESULTS_PATHS[0]
         }else {
             resultPath = path.join(os.tmpdir(), 'allure-deployer-results-temp')
-            await this.copyFiles({from: this.args.RESULTS_PATHS, to: resultPath})
+            await this.copyResultFiles({from: this.args.RESULTS_PATHS, to: resultPath})
         }
         await this.provider.upload(resultPath, RESULTS_ARCHIVE_NAME);
     }
@@ -183,14 +183,14 @@ export class GithubStorage implements IStorage {
         await this.provider.upload(this.getHistoryFolder(), HISTORY_ARCHIVE_NAME);
     }
 
-    private async copyFiles({
+    private async copyResultFiles({
                                         from,
                                         to,
                                         concurrency = 10,
                                         overwrite = false,
         exclude = ['executor.json', 'environment.properties']
                                     }: {
-        from: string[]; // Updated to accept an array of directories
+        from: string[]; // array of result directories
         to: string;
         concurrency?: number;
         overwrite?: boolean;
@@ -207,10 +207,10 @@ export class GithubStorage implements IStorage {
         for (const dir of from) {
             try {
                 // Get the list of files from the current directory
-                const files = await fs.readdir(dir, {withFileTypes: true});
+                const directoryEntries = await fs.readdir(dir, {withFileTypes: true});
 
-                for (const file of files) {
-                    // Skip directories, process files only
+                for (const file of directoryEntries) {
+                    // Skip directories in Allure Result path, process files only
                     if (!file.isFile()) continue;
                     // Skip excluded files
                     if(exclude.includes(path.basename(file.name))) continue
@@ -229,7 +229,7 @@ export class GithubStorage implements IStorage {
                     );
                 }
             } catch (error) {
-                console.log(`Error reading directory ${dir}:`, error);
+                console.log(`Error reading directory: ${dir}`, error);
             }
         }
 
