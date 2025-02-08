@@ -5,12 +5,12 @@ import * as console from "node:console";
 import github from "@actions/github";
 export class GithubPagesService {
     constructor({ branch, workspace, token, repo, owner, subFolder, reportDir }) {
-        this.git = simpleGit({ baseDir: workspace });
         this.branch = branch;
         this.owner = owner;
         this.repo = repo;
         this.subFolder = subFolder;
         this.reportDir = reportDir;
+        this.git = simpleGit({ baseDir: workspace });
         this.token = token;
     }
     async deployPages() {
@@ -33,13 +33,14 @@ export class GithubPagesService {
     async setupBranch() {
         // Initialize repository and fetch branch info
         await this.git.init();
-        // Authenticate using token (for HTTPS)
-        this.git.addConfig('http.extraHeader', `Authorization: token ${this.token}`, true, 'local');
+        const headers = {
+            Authorization: `basic ${Buffer.from(`x-access-token:${this.token}`).toString('base64')}`
+        };
+        this.git.addConfig('http.https://github.com/.extraheader', `AUTHORIZATION: ${headers.Authorization}`, true, 'local');
         const actor = github.context.actor;
         const email = `${github.context.payload.sender?.id}+${actor}@users.noreply.github.com`;
-        this.git.addConfig('user.email', email).addConfig('user.name', actor);
-        console.log(`Email: ${email}`);
-        console.log(`Actor: ${actor}`);
+        this.git.addConfig('user.email', email, true, 'local')
+            .addConfig('user.name', actor, true, 'local');
         await this.git.addRemote('origin', `https://github.com/${this.owner}/${this.repo}.git`);
         await this.git.fetch('origin', this.branch); // Fetch only the target branch
         // Check if the remote branch exists
