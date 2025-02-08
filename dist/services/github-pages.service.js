@@ -1,7 +1,6 @@
 import fs from "fs";
 import path from "node:path";
-import simpleGit from "simple-git";
-import * as console from "node:console";
+import simpleGit, { CheckRepoActions } from "simple-git";
 import github from "@actions/github";
 export class GithubPagesService {
     constructor({ branch, workspace, token, repo, owner, subFolder, reportDir }) {
@@ -14,69 +13,70 @@ export class GithubPagesService {
         this.token = token;
     }
     async deployPages() {
-        if (!fs.existsSync(this.reportDir)) {
+        const [reportDirExists, isRepo] = await Promise.all([
+            fs.existsSync(this.reportDir),
+            this.git.checkIsRepo(CheckRepoActions.IS_REPO_ROOT)
+        ]);
+        if (!reportDirExists) {
             throw new Error(`Directory does not exist: ${this.reportDir}`);
         }
-        // Add files to the git index
+        if (!isRepo) {
+            throw new Error('No repository found. Call setupBranch() to initialize.');
+        }
         const files = this.getFilePathsFromDir(this.reportDir);
         if (files.length === 0) {
-            console.warn(`No files found in the directory: ${this.reportDir}. Deployment aborted.`);
+            console.warn(`No files found in directory: ${this.reportDir}. Deployment aborted.`);
             return;
         }
-        // Stage and commit files
         await this.git.add(files);
-        await this.git.commit(`Allure report for Github run: ${github.context.runId} `);
-        // Push changes to the branch
+        await this.git.commit(`Allure report for GitHub run: ${github.context.runId}`);
         await this.git.push('origin', this.branch);
-        console.log("Deployment to GitHub Pages complete");
+        console.log("Deployment to GitHub Pages completed successfully.");
     }
     async setupBranch() {
-        // Initialize repository and fetch branch info
         await this.git.init();
         const headers = {
-            Authorization: `basic ${Buffer.from(`x-access-token:${this.token}`).toString('base64')}`
+            Authorization: `Basic ${Buffer.from(`x-access-token:${this.token}`).toString('base64')}`
         };
         this.git.addConfig('http.https://github.com/.extraheader', `AUTHORIZATION: ${headers.Authorization}`, true, 'local');
         const actor = github.context.actor;
         const email = `${github.context.payload.sender?.id}+${actor}@users.noreply.github.com`;
-        this.git.addConfig('user.email', email, true, 'local')
+        await this.git
+            .addConfig('user.email', email, true, 'local')
             .addConfig('user.name', actor, true, 'local');
         await this.git.addRemote('origin', `https://github.com/${this.owner}/${this.repo}.git`);
-        await this.git.fetch('origin', this.branch); // Fetch only the target branch
-        // Check if the remote branch exists
+        await this.git.fetch('origin', this.branch);
         const branchList = await this.git.branch(['-r', '--list', `origin/${this.branch}`]);
         if (branchList.all.length === 0) {
             console.log(`Remote branch '${this.branch}' does not exist. Creating it from the default branch.`);
-            // Get the default branch name
             const defaultBranch = (await this.git.raw(['symbolic-ref', 'refs/remotes/origin/HEAD']))
                 .trim()
-                .split('/').pop();
-            // Create and switch to a new local branch that tracks the default branch
+                .split('/')
+                .pop();
             await this.git.checkoutBranch(this.branch, `origin/${defaultBranch}`);
-            console.log(`Branch '${this.branch}' created from '${defaultBranch}'`);
+            console.log(`Branch '${this.branch}' created from '${defaultBranch}'.`);
         }
         else {
-            // Branch exists, switch to it
             await this.git.checkoutBranch(this.branch, `origin/${this.branch}`);
-            console.log(`Checked out branch '${this.branch}'`);
+            console.log(`Checked out branch '${this.branch}'.`);
         }
         return `https://${this.owner}.github.io/${this.repo}/${this.subFolder}`;
     }
     getFilePathsFromDir(dir) {
         const files = [];
-        const readDir = (currentDir) => {
+        const readDirectory = (currentDir) => {
             const entries = fs.readdirSync(currentDir, { withFileTypes: true });
             for (const entry of entries) {
                 const fullPath = path.join(currentDir, entry.name);
                 if (entry.isDirectory()) {
-                    readDir(fullPath);
+                    readDirectory(fullPath);
                 }
                 else {
                     files.push(fullPath);
                 }
             }
         };
-        readDir(dir);
+        readDirectory(dir);
         return files;
     }
 }

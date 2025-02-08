@@ -5,5 +5,7 @@ export interface GitHubArgInterface extends ArgsInterface{
     target: Target;
     storageRequired: boolean;
     gitWorkspace: string;
+    repo: string;
+    owner: string;
 }
 export enum Target {FIREBASE, GITHUB}
