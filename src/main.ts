@@ -32,6 +32,7 @@ import {copyDirectory, setGoogleCredentialsEnv, validateSlackConfig} from "./uti
 import {GitHubArgInterface, Target} from "./interfaces/args.interface.js";
 import {ArtifactService, ArtifactServiceConfig} from "./services/artifact.service.js";
 import {GithubStorage} from "./features/github-storage.js";
+import fsSync from "fs";
 
 function getTarget(): Target {
     const target = core.getInput("target", {required: true}).toLowerCase();
@@ -61,6 +62,7 @@ export function main() {
         const retries: number = getRetries()
         const runtimeDir = await getRuntimeDirectory();
         const gitWorkspace = path.posix.join(runtimeDir, 'report')
+        fsSync.mkdirSync(gitWorkspace, {recursive: true });
         const reportDir = path.posix.join(gitWorkspace, core.getInput('github_subfolder'));
         const storageRequired: boolean = showHistory || retries > 0
         const args: GitHubArgInterface = {
