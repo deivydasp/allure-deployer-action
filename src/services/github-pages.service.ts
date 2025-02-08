@@ -64,6 +64,7 @@ export class GithubPagesService implements GithubPagesInterface {
     async setupBranch(): Promise<string> {
         // Initialize repository and fetch branch info
         await this.git.init();
+        await this.git.addRemote('origin', `https://github.com/${this.owner}/${this.repo}.git`);
         await this.git.fetch('origin', this.branch);  // Fetch only the target branch
         // Check if the remote branch exists
         const branchList = await this.git.branch(['-r', '--list', `origin/${this.branch}`]);
