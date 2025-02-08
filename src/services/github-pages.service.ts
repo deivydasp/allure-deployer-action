@@ -39,6 +39,8 @@ export class GithubPagesService implements GithubPagesInterface {
         this.reportDir = reportDir
         // Authenticate using token (for HTTPS)
         this.git.addConfig('http.extraHeader', `Authorization: token ${token}`);
+        this.git.addConfig('user.email', '41898282+github-actions[bot]@users.noreply.github.com')
+        this.git.addConfig('user.name', 'github-actions[bot]')
     }
 
     async deployPages(): Promise<void> {
