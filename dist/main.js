@@ -40,6 +40,7 @@ export function main() {
         fsSync.mkdirSync(gitWorkspace, { recursive: true });
         const reportDir = path.posix.join(gitWorkspace, core.getInput('github_subfolder'));
         const storageRequired = showHistory || retries > 0;
+        const [owner, repo] = getInputOrUndefined('github_pages_repo', true).split('/');
         const args = {
             reportLanguage: getInputOrUndefined('language'),
             downloadRequired: storageRequired,
@@ -54,7 +55,8 @@ export function main() {
             showHistory,
             storageRequired,
             target,
-            gitWorkspace
+            gitWorkspace,
+            owner, repo
         };
         if (target === Target.FIREBASE) {
             const credentials = getInputOrUndefined("google_credentials_json");
@@ -78,7 +80,7 @@ export function main() {
             args.host = getGitHubHost({
                 token,
                 reportDir,
-                gitWorkspace
+                gitWorkspace, repo, owner
             });
         }
         await executeDeployment(args);
@@ -106,12 +108,12 @@ async function executeDeployment(args) {
 function getFirebaseHost({ firebaseProjectId, REPORTS_DIR }) {
     return new FirebaseHost(new FirebaseService(firebaseProjectId, REPORTS_DIR));
 }
-function getGitHubHost({ token, reportDir, gitWorkspace }) {
+function getGitHubHost({ token, reportDir, gitWorkspace, owner, repo }) {
     const subFolder = getInputOrUndefined('github_subfolder', true);
     const branch = getInputOrUndefined('github_pages_branch', true);
     const config = {
-        owner: github.context.repo.owner,
-        repo: github.context.repo.repo,
+        owner,
+        repo,
         workspace: gitWorkspace,
         token, subFolder, branch,
         reportDir
@@ -122,8 +124,8 @@ async function initializeStorage(args) {
     switch (args.target) {
         case Target.GITHUB: {
             const config = {
-                owner: github.context.repo.owner,
-                repo: github.context.repo.repo,
+                owner: args.owner,
+                repo: args.repo,
                 token: args.githubToken
             };
             return new GithubStorage(new ArtifactService(config), args);

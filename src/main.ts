@@ -62,9 +62,10 @@ export function main() {
         const retries: number = getRetries()
         const runtimeDir = await getRuntimeDirectory();
         const gitWorkspace = path.posix.join(runtimeDir, 'report')
-        fsSync.mkdirSync(gitWorkspace, {recursive: true });
+        fsSync.mkdirSync(gitWorkspace, {recursive: true});
         const reportDir = path.posix.join(gitWorkspace, core.getInput('github_subfolder'));
         const storageRequired: boolean = showHistory || retries > 0
+        const [owner, repo] = getInputOrUndefined('github_pages_repo', true)!.split('/')
         const args: GitHubArgInterface = {
             reportLanguage: getInputOrUndefined('language'),
             downloadRequired: storageRequired,
@@ -79,7 +80,8 @@ export function main() {
             showHistory,
             storageRequired,
             target,
-            gitWorkspace
+            gitWorkspace,
+            owner, repo
         };
 
         if (target === Target.FIREBASE) {
@@ -103,7 +105,7 @@ export function main() {
             args.host = getGitHubHost({
                 token,
                 reportDir,
-                gitWorkspace
+                gitWorkspace, repo, owner
             });
         }
         await executeDeployment(args);
@@ -139,17 +141,19 @@ function getFirebaseHost({firebaseProjectId, REPORTS_DIR}: {
 
 function getGitHubHost({
                            token,
-                           reportDir, gitWorkspace
+                           reportDir, gitWorkspace, owner, repo
                        }: {
     token: string;
     reportDir: string;
     gitWorkspace: string;
+    owner: string;
+    repo: string;
 }): GithubHost {
     const subFolder = getInputOrUndefined('github_subfolder', true)!;
     const branch = getInputOrUndefined('github_pages_branch', true)!;
     const config: GitHubConfig = {
-        owner: github.context.repo.owner,
-        repo: github.context.repo.repo,
+        owner,
+        repo,
         workspace: gitWorkspace,
         token, subFolder, branch,
         reportDir
@@ -161,8 +165,8 @@ async function initializeStorage(args: GitHubArgInterface): Promise<IStorage | u
     switch (args.target) {
         case Target.GITHUB: {
             const config: ArtifactServiceConfig = {
-                owner: github.context.repo.owner,
-                repo: github.context.repo.repo,
+                owner: args.owner,
+                repo: args.repo,
                 token: args.githubToken!
             }
             return new GithubStorage(new ArtifactService(config), args)
@@ -273,7 +277,7 @@ async function copyReportToOutput(reportDir: string): Promise<void> {
     if (reportOutputPath) {
         try {
             await copyDirectory(reportDir, reportOutputPath);
-        }catch (e) {
+        } catch (e) {
             console.error(e);
         }
     }
