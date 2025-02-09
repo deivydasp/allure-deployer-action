@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "node:path";
 import simpleGit, { CheckRepoActions } from "simple-git";
 import github from "@actions/github";
+import pLimit from "p-limit";
 export class GithubPagesService {
     constructor({ branch, workspace, token, repo, owner, subFolder, reportDir }) {
         this.branch = branch;
@@ -23,7 +24,7 @@ export class GithubPagesService {
         if (!isRepo) {
             throw new Error('No repository found. Call setupBranch() to initialize.');
         }
-        const files = this.getFilePathsFromDir(this.reportDir);
+        const files = await this.getFilePathsFromDir(this.reportDir);
         if (files.length === 0) {
             console.warn(`No files found in directory: ${this.reportDir}. Deployment aborted.`);
             return;
@@ -62,21 +63,22 @@ export class GithubPagesService {
         }
         return `https://${this.owner}.github.io/${this.repo}/${this.subFolder}`;
     }
-    getFilePathsFromDir(dir) {
+    async getFilePathsFromDir(dir) {
         const files = [];
-        const readDirectory = (currentDir) => {
-            const entries = fs.readdirSync(currentDir, { withFileTypes: true });
-            for (const entry of entries) {
+        const limit = pLimit(10); // Limit concurrent directory operations
+        const readDirectory = async (currentDir) => {
+            const entries = await fs.promises.readdir(currentDir, { withFileTypes: true });
+            await Promise.all(entries.map(entry => limit(async () => {
                 const fullPath = path.join(currentDir, entry.name);
                 if (entry.isDirectory()) {
-                    readDirectory(fullPath);
+                    await readDirectory(fullPath);
                 }
                 else {
                     files.push(fullPath);
                 }
-            }
+            })));
         };
-        readDirectory(dir);
+        await readDirectory(dir);
         return files;
     }
 }

@@ -10,9 +10,8 @@ export class GitHubService {
     }
     async updatePr({ message, token, prNumber }) {
         try {
-            const octokit = github.getOctokit(token);
             // Update the PR body
-            await octokit.rest.issues.createComment({
+            await github.getOctokit(token).rest.issues.createComment({
                 owner: github.context.repo.owner,
                 repo: github.context.repo.repo,
                 issue_number: prNumber,

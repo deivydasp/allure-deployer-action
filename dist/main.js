@@ -71,7 +71,7 @@ export function main() {
             args.storageBucket = getInputOrUndefined('gcs_bucket');
         }
         else {
-            const token = core.getInput("github_token");
+            const token = getInputOrUndefined("github_token");
             if (!token) {
                 core.setFailed("Error: Github Pages require a 'github_token'.");
                 return;

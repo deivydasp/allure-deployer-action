@@ -40,7 +40,7 @@ on:
           - de
       subfolder:
         description: 'GitHub sub directory'
-        default: 'local-action'
+#        default: 'local-action'
 jobs:
   firebase:
     if: ${{ github.event.inputs.job == 'firebase' }}

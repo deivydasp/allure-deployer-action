@@ -1,8 +1,9 @@
-import fs from "fs";
+import fs, {Dirent} from "fs";
 import path from "node:path";
 import simpleGit, { CheckRepoActions, SimpleGit } from "simple-git";
 import { GithubPagesInterface } from "../interfaces/github-pages.interface.js";
 import github from "@actions/github";
+import pLimit from "p-limit";
 
 export type GitHubConfig = {
     owner: string;
@@ -55,7 +56,7 @@ export class GithubPagesService implements GithubPagesInterface {
             throw new Error('No repository found. Call setupBranch() to initialize.');
         }
 
-        const files = this.getFilePathsFromDir(this.reportDir);
+        const files: string[] = await this.getFilePathsFromDir(this.reportDir);
         if (files.length === 0) {
             console.warn(`No files found in directory: ${this.reportDir}. Deployment aborted.`);
             return;
@@ -107,24 +108,28 @@ export class GithubPagesService implements GithubPagesInterface {
         return `https://${this.owner}.github.io/${this.repo}/${this.subFolder}`;
     }
 
-    private getFilePathsFromDir(dir: string): string[] {
+    private async getFilePathsFromDir(dir: string): Promise<string[]> {
         const files: string[] = [];
+        const limit: pLimit.Limit = pLimit(10); // Limit concurrent directory operations
 
-        const readDirectory = (currentDir: string) => {
-            const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+        const readDirectory = async (currentDir: string) => {
+            const entries: Dirent[] = await fs.promises.readdir(currentDir, { withFileTypes: true });
 
-            for (const entry of entries) {
-                const fullPath = path.join(currentDir, entry.name);
-
-                if (entry.isDirectory()) {
-                    readDirectory(fullPath);
-                } else {
-                    files.push(fullPath);
-                }
-            }
+            await Promise.all(
+                entries.map(entry =>
+                    limit(async () => {
+                        const fullPath = path.join(currentDir, entry.name);
+                        if (entry.isDirectory()) {
+                            await readDirectory(fullPath);
+                        } else {
+                            files.push(fullPath);
+                        }
+                    })
+                )
+            );
         };
 
-        readDirectory(dir);
+        await readDirectory(dir);
         return files;
     }
 }

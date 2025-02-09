@@ -61,7 +61,7 @@ inputs:
     description: "Allure report language"
     default: 'en'
   github_pages_repo:
-    description: "GitHub repository to deploy GitHub pages. Example owner/repository-name"
+    description: "GitHub repository to deploy GitHub pages. Example owner/repositoryName"
     default: ${{ github.repository }}
 outputs:
   report_url:
