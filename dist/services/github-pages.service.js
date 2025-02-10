@@ -45,7 +45,9 @@ export class GithubPagesService {
         await this.git
             .addConfig('user.email', email, true, 'local')
             .addConfig('user.name', actor, true, 'local');
-        await this.git.addRemote('origin', `https://github.com/${this.owner}/${this.repo}.git`);
+        const remote = `${github.context.serverUrl}/${this.owner}/${this.repo}.git`;
+        await this.git.addRemote('origin', remote);
+        console.log(`Git remote branch set to: ${this.branch}`);
         await this.git.fetch('origin', this.branch);
         const branchList = await this.git.branch(['-r', '--list', `origin/${this.branch}`]);
         if (branchList.all.length === 0) {
@@ -61,7 +63,23 @@ export class GithubPagesService {
             await this.git.checkoutBranch(this.branch, `origin/${this.branch}`);
             console.log(`Checked out branch '${this.branch}'.`);
         }
-        return `https://${this.owner}.github.io/${this.repo}/${this.subFolder}`;
+        const domain = (await this.getCustomDomain()) ?? `${this.owner}.github.io`;
+        return `https://${domain}/${this.repo}/${this.subFolder}`;
+    }
+    async getCustomDomain() {
+        try {
+            // Fetch the Pages configuration
+            const response = await github.getOctokit(this.token).rest.repos.getPages({
+                owner: this.owner,
+                repo: this.repo,
+            });
+            // Extract the custom domain
+            return response.data.cname;
+        }
+        catch (error) {
+            console.warn('Error checking for custom domain config:', error);
+            return null;
+        }
     }
     async getFilePathsFromDir(dir) {
         const files = [];

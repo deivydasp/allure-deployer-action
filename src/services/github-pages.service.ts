@@ -1,7 +1,7 @@
 import fs, {Dirent} from "fs";
 import path from "node:path";
-import simpleGit, { CheckRepoActions, SimpleGit } from "simple-git";
-import { GithubPagesInterface } from "../interfaces/github-pages.interface.js";
+import simpleGit, {CheckRepoActions, SimpleGit} from "simple-git";
+import {GithubPagesInterface} from "../interfaces/github-pages.interface.js";
 import github from "@actions/github";
 import pLimit from "p-limit";
 
@@ -85,7 +85,9 @@ export class GithubPagesService implements GithubPagesInterface {
             .addConfig('user.email', email, true, 'local')
             .addConfig('user.name', actor, true, 'local');
 
-        await this.git.addRemote('origin', `https://github.com/${this.owner}/${this.repo}.git`);
+        const remote = `${github.context.serverUrl}/${this.owner}/${this.repo}.git`
+        await this.git.addRemote('origin', remote);
+        console.log(`Git remote branch set to: ${this.branch}`);
         await this.git.fetch('origin', this.branch);
 
         const branchList = await this.git.branch(['-r', '--list', `origin/${this.branch}`]);
@@ -105,7 +107,23 @@ export class GithubPagesService implements GithubPagesInterface {
             console.log(`Checked out branch '${this.branch}'.`);
         }
 
-        return `https://${this.owner}.github.io/${this.repo}/${this.subFolder}`;
+        const domain = (await this.getCustomDomain()) ?? `${this.owner}.github.io`
+        return `https://${domain}/${this.repo}/${this.subFolder}`;
+    }
+
+    private async getCustomDomain(): Promise<string | null> {
+        try {
+            // Fetch the Pages configuration
+            const response = await github.getOctokit(this.token).rest.repos.getPages({
+                owner: this.owner,
+                repo: this.repo,
+            });
+            // Extract the custom domain
+            return response.data.cname;
+        } catch (error) {
+            console.warn('Error checking for custom domain config:', error);
+            return null;
+        }
     }
 
     private async getFilePathsFromDir(dir: string): Promise<string[]> {
