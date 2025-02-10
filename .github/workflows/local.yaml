@@ -40,7 +40,7 @@ on:
           - de
       subfolder:
         description: 'GitHub sub directory'
-        default: 'local-action'
+        default: ${{github.run_id}}
 jobs:
   firebase:
     if: ${{ github.event.inputs.job == 'firebase' }}
@@ -80,7 +80,8 @@ jobs:
           retries: ${{github.event.inputs.retries}}
           report_name: ${{github.event.inputs.report-name}}
           language: ${{github.event.inputs.report-lang}}
-#          github_subfolder: ${{github.event.inputs.subfolder}}
+          github_subfolder: '${{ github.event.inputs.subfolder}}'
+
 
   gh-pages-no-backup:
     if: ${{ github.event.inputs.job == 'gh-pages-no-backup'}}
@@ -98,4 +99,4 @@ jobs:
           allure_results_path: 'allure-results'
           report_name: ${{github.event.inputs.report-name}}
           language: ${{github.event.inputs.report-lang}}
-#          github_subfolder: ${{github.event.inputs.subfolder}}
+          github_subfolder: '${{ github.event.inputs.subfolder}}'

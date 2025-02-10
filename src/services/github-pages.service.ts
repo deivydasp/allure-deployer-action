@@ -87,7 +87,7 @@ export class GithubPagesService implements GithubPagesInterface {
 
         const remote = `${github.context.serverUrl}/${this.owner}/${this.repo}.git`
         await this.git.addRemote('origin', remote);
-        console.log(`Git remote branch set to: ${this.branch}`);
+        console.log(`Git remote set to: ${remote}`);
         await this.git.fetch('origin', this.branch);
 
         const branchList = await this.git.branch(['-r', '--list', `origin/${this.branch}`]);
