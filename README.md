@@ -205,7 +205,8 @@ jobs:
 ## Setup Notes
 
 - **GitHub Hosting:**
-  Ensure `github_token` permissions include `contents: write` and `actions: write`
+  - Ensure `github_token` permissions include `contents: write` and `actions: write`
+  - Ensure that GitHub Pages is configured to deploy from the `github_pages_branch` provided. Default branch is `gh-pages` 
 - **Firebase Hosting:**  
   Export a [service account](https://firebase.google.com/docs/admin/setup#initialize_the_sdk_in_non-google_environments) JSON file from your Firebase Console.
 - **Pull Request Comments:**  

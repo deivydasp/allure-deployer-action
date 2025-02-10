@@ -3,6 +3,8 @@ import path from "node:path";
 import simpleGit, { CheckRepoActions } from "simple-git";
 import github from "@actions/github";
 import pLimit from "p-limit";
+import core from "@actions/core";
+import { RequestError } from "@octokit/request-error";
 export class GithubPagesService {
     constructor({ branch, workspace, token, repo, owner, subFolder, reportDir }) {
         this.branch = branch;
@@ -36,6 +38,7 @@ export class GithubPagesService {
         console.log(`Ensure that your GitHub Pages is configured to deploy from '${this.branch}' branch.`);
     }
     async setupBranch() {
+        await this.isPagesEnabled();
         await this.git.init();
         const headers = {
             Authorization: `Basic ${Buffer.from(`x-access-token:${this.token}`).toString('base64')}`
@@ -66,6 +69,45 @@ export class GithubPagesService {
         }
         const domain = (await this.getCustomDomain()) ?? `${this.owner}.github.io`;
         return `https://${domain}/${this.repo}/${this.subFolder}`;
+    }
+    async isPagesEnabled() {
+        try {
+            const response = await github.getOctokit(this.token)
+                .request('GET /repos/{owner}/{repo}/pages', {
+                owner: this.owner,
+                repo: this.repo,
+                headers: {
+                    'X-GitHub-Api-Version': '2022-11-28'
+                }
+            });
+            const branch = response.data.source?.branch;
+            const type = response.data.build_type;
+            console.warn(response.data);
+            if (type != 'legacy') {
+                core.warning(`GitHub pages is not configured to deploy from a branch.`);
+                return false;
+            }
+            if (branch !== this.branch) {
+                core.warning(`GitHub pages is not configured to deploy for '${this.branch}' branch.`);
+                return false;
+            }
+            core.info(`GitHub pages is configured to deploy from ${branch}!`);
+            return true;
+        }
+        catch (e) {
+            if (e instanceof RequestError) {
+                switch (e.status) {
+                    case 404: {
+                        console.warn(`GitHub pages is not enabled for this repository`, e.message);
+                        return false;
+                    }
+                    default: {
+                        core.error(e.message);
+                    }
+                }
+            }
+            return false;
+        }
     }
     async getCustomDomain() {
         try {

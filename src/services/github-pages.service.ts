@@ -4,6 +4,8 @@ import simpleGit, {CheckRepoActions, SimpleGit} from "simple-git";
 import {GithubPagesInterface} from "../interfaces/github-pages.interface.js";
 import github from "@actions/github";
 import pLimit from "p-limit";
+import core from "@actions/core";
+import {RequestError} from "@octokit/request-error";
 
 export type GitHubConfig = {
     owner: string;
@@ -71,6 +73,7 @@ export class GithubPagesService implements GithubPagesInterface {
     }
 
     async setupBranch(): Promise<string> {
+        await this.isPagesEnabled()
         await this.git.init();
 
         const headers = {
@@ -110,6 +113,46 @@ export class GithubPagesService implements GithubPagesInterface {
 
         const domain = (await this.getCustomDomain()) ?? `${this.owner}.github.io`
         return `https://${domain}/${this.repo}/${this.subFolder}`;
+    }
+
+
+    private async isPagesEnabled(): Promise<boolean> {
+        try {
+            const response = await github.getOctokit(this.token)
+                .request('GET /repos/{owner}/{repo}/pages', {
+                owner: this.owner,
+                repo: this.repo,
+                headers: {
+                    'X-GitHub-Api-Version': '2022-11-28'
+                }
+            })
+            const branch = response.data.source?.branch;
+            const type = response.data.build_type
+            console.warn(response.data)
+            if(type != 'legacy'){
+                core.warning(`GitHub pages is not configured to deploy from a branch.`);
+                return false;
+            }
+            if(branch !== this.branch) {
+                core.warning(`GitHub pages is not configured to deploy for '${this.branch}' branch.`);
+                return false
+            }
+            core.info(`GitHub pages is configured to deploy from ${branch}!`);
+            return true
+        }catch (e) {
+            if(e instanceof RequestError) {
+                switch (e.status) {
+                    case 404: {
+                        console.warn(`GitHub pages is not enabled for this repository`, e.message);
+                        return false;
+                    }
+                    default: {
+                        core.error(e.message);
+                    }
+                }
+            }
+            return false;
+        }
     }
 
     private async getCustomDomain(): Promise<string | null> {
