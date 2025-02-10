@@ -45,7 +45,7 @@ inputs:
   pr_comment:
     description: "Post test report information as pull request comment. Requires `github_token` to be set with permission  "
     default: "true"
-  output:
+  report_dir:
     description: "A custom directory to generate Allure report into."
     required: false
   github_token:
@@ -61,7 +61,7 @@ inputs:
     description: "Allure report language"
     default: 'en'
   github_pages_repo:
-    description: "GitHub repository to deploy GitHub pages. Example owner/repositoryName"
+    description: "GitHub repository to deploy GitHub pages. Example owner/repo"
     default: ${{ github.repository }}
 outputs:
   report_url:

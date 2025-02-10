@@ -38,7 +38,8 @@ export class GithubPagesService {
         console.log(`Ensure that your GitHub Pages is configured to deploy from '${this.branch}' branch.`);
     }
     async setupBranch() {
-        await this.isPagesEnabled();
+        if (!await this.isPagesEnabled())
+            process.exit(1);
         await this.git.init();
         const headers = {
             Authorization: `Basic ${Buffer.from(`x-access-token:${this.token}`).toString('base64')}`
@@ -82,31 +83,30 @@ export class GithubPagesService {
             });
             const branch = response.data.source?.branch;
             const type = response.data.build_type;
-            console.warn(response.data);
-            if (type != 'legacy') {
-                core.warning(`GitHub pages is not configured to deploy from a branch.`);
+            if (type != 'legacy' || branch !== this.branch) {
+                core.startGroup('Error');
+                core.error(`Ensure that GitHub pages is configured to deploy from '${this.branch}' branch.`);
+                core.error('https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site');
+                core.endGroup();
                 return false;
             }
-            if (branch !== this.branch) {
-                core.warning(`GitHub pages is not configured to deploy for '${this.branch}' branch.`);
-                return false;
-            }
-            core.info(`GitHub pages is configured to deploy from ${branch}!`);
+            core.info(`GitHub pages will be deployed from '${branch}' branch!`);
             return true;
         }
         catch (e) {
             if (e instanceof RequestError) {
                 switch (e.status) {
                     case 404: {
-                        console.warn(`GitHub pages is not enabled for this repository`, e.message);
+                        console.error(`GitHub pages is not enabled for this repository`, e.message);
                         return false;
                     }
                     default: {
                         core.error(e.message);
+                        return false;
                     }
                 }
             }
-            return false;
+            throw e;
         }
     }
     async getCustomDomain() {

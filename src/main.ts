@@ -266,14 +266,14 @@ async function finalizeDeployment({
         getReportStats(args.REPORTS_DIR),
         args.host?.deploy(),
         storage?.uploadArtifacts(),
-        copyReportToOutput(args.REPORTS_DIR),
+        copyReportToCustomDir(args.REPORTS_DIR),
     ]);
     console.log("Deployment finalized.");
     return result;
 }
 
-async function copyReportToOutput(reportDir: string): Promise<void> {
-    const reportOutputPath = getInputOrUndefined('output');
+async function copyReportToCustomDir(reportDir: string): Promise<void> {
+    const reportOutputPath = getInputOrUndefined('report_dir');
     if (reportOutputPath) {
         try {
             await copyDirectory(reportDir, reportOutputPath);

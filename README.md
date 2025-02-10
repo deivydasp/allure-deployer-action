@@ -185,7 +185,7 @@ jobs:
 | `gcs_bucket`              | Google Cloud Storage bucket name for **History** and **Retries** when target is `firebase`.                                          | None                | No        |
 | `show_history`            | Display history from previous runs.                                                                                                  | `true`              | No        |
 | `retries`                 | Number of previous runs to display as retries.                                                                                       | 0                   | No        |
-| `output`                  | Directory to generate the Allure report in.                                                                                          | None                | No        |
+| `report_dir`              | Directory to generate the Allure report in.                                                                                          | None                | No        |
 | `slack_channel`           | Slack channel ID for report notifications.                                                                                           | None                | No        |
 | `slack_token`             | Slack app token for sending notifications.                                                                                           | None                | No        |
 | `pr_comment`              | Post report information as a pull request comment. Requires GitHub token with `pull_requests: write` and `issues: write` permissions | `true`              | No        |
