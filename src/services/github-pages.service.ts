@@ -66,7 +66,8 @@ export class GithubPagesService implements GithubPagesInterface {
         await this.git.commit(`Allure report for GitHub run: ${github.context.runId}`);
         await this.git.push('origin', this.branch);
 
-        console.log("Deployment to GitHub Pages completed successfully.");
+        console.log(`Allure report pages commited to '${this.subFolder}' directory on '${this.branch}' branch`);
+        console.log(`Ensure that your GitHub Pages is configured to deploy from '${this.branch}' branch.`);
     }
 
     async setupBranch(): Promise<string> {
