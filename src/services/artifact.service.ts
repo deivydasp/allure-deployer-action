@@ -51,7 +51,7 @@ export class ArtifactService implements StorageProvider {
         this.repo = repo;
     }
 
-    async hasArtifactPermission(): Promise<boolean> {
+    async hasArtifactReadPermission(): Promise<boolean> {
         try {
             await this.getFiles({matchGlob: 'last-history', maxResults: 1})
             return true

@@ -170,10 +170,10 @@ async function initializeStorage(args: Inputs): Promise<IStorage | undefined> {
                 token: args.githubToken!
             }
             const service = new ArtifactService(config)
-            if(await service.hasArtifactPermission()){
+            if(await service.hasArtifactReadPermission()){
                 return new GithubStorage(service, args)
             }
-            core.warning("Your GitHub token does not have 'actions: write' permission to access GitHub Artifacts. History and Retries will not be included in test report")
+            core.warning("GitHub token does not have 'actions: write' permission to access GitHub Artifacts. History and Retries will not be included in test reports")
             return undefined
         }
         case Target.FIREBASE: {

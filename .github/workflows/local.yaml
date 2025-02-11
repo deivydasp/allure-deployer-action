@@ -87,6 +87,7 @@ jobs:
     runs-on: ${{ github.event.inputs.runner }}
     permissions:
       contents: write
+      actions: none
     steps:
       - uses: actions/checkout@v4.1.5
       - name: Deploy Reports to GitHub pages

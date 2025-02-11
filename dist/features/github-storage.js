@@ -5,6 +5,8 @@ import pLimit from "p-limit";
 import * as os from "node:os";
 import fsSync from "fs";
 import unzipper from "unzipper";
+import { RequestError } from "@octokit/request-error";
+import core from "@actions/core";
 const HISTORY_ARCHIVE_NAME = "last-history";
 const RESULTS_ARCHIVE_NAME = "allure-results";
 export class GithubStorage {
@@ -93,7 +95,12 @@ export class GithubStorage {
                         await this.provider.deleteFile(file.id);
                     }
                     catch (error) {
-                        console.warn("Delete file error:", error);
+                        if (error instanceof RequestError && error.status === 403) {
+                            core.warning(`Failed to delete outdated Allure History file. Ensure that GitHub token has 'actions: write' permission`);
+                        }
+                        else {
+                            console.warn("Delete file error:", error);
+                        }
                     }
                 }));
             }
@@ -129,7 +136,12 @@ export class GithubStorage {
                         await this.provider.deleteFile(file.id);
                     }
                     catch (error) {
-                        console.warn("Delete file error:", error);
+                        if (error instanceof RequestError && error.status === 403) {
+                            core.warning(`Failed to delete outdated Allure Result files. Ensure that GitHub token has 'actions: write' permission`);
+                        }
+                        else {
+                            console.warn("Delete file error:", error);
+                        }
                     }
                 }));
             }

@@ -13,7 +13,7 @@ export class ArtifactService {
         this.owner = owner;
         this.repo = repo;
     }
-    async hasArtifactPermission() {
+    async hasArtifactReadPermission() {
         try {
             await this.getFiles({ matchGlob: 'last-history', maxResults: 1 });
             return true;
