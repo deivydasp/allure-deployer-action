@@ -28,8 +28,8 @@ export class GithubPagesService {
         }
         const files = await this.getFilePathsFromDir(this.reportDir);
         if (files.length === 0) {
-            console.warn(`No files found in directory: ${this.reportDir}. Deployment aborted.`);
-            return;
+            core.error(`No files found in directory: ${this.reportDir}. Deployment aborted.`);
+            process.exit(1);
         }
         await this.git.add(files);
         await this.git.commit(`Allure report for GitHub run: ${github.context.runId}`);
@@ -38,8 +38,7 @@ export class GithubPagesService {
         console.log(`Ensure that your GitHub Pages is configured to deploy from '${this.branch}' branch.`);
     }
     async setupBranch() {
-        if (!await this.isPagesEnabled())
-            process.exit(1);
+        const domain = await this.getPageUrl();
         await this.git.init();
         const headers = {
             Authorization: `Basic ${Buffer.from(`x-access-token:${this.token}`).toString('base64')}`
@@ -52,8 +51,9 @@ export class GithubPagesService {
             .addConfig('user.name', actor, true, 'local');
         const remote = `${github.context.serverUrl}/${this.owner}/${this.repo}.git`;
         await this.git.addRemote('origin', remote);
-        console.log(`Git remote set to: ${remote}`);
-        await this.git.fetch('origin', this.branch);
+        // console.log(`Git remote set to: ${remote}`);
+        const kk = await this.git.fetch('origin', this.branch);
+        console.log(`Fetch results: ${JSON.stringify(kk, null, 2)}`);
         const branchList = await this.git.branch(['-r', '--list', `origin/${this.branch}`]);
         if (branchList.all.length === 0) {
             console.log(`Remote branch '${this.branch}' does not exist. Creating it from the default branch.`);
@@ -68,60 +68,43 @@ export class GithubPagesService {
             await this.git.checkoutBranch(this.branch, `origin/${this.branch}`);
             console.log(`Checked out branch '${this.branch}'.`);
         }
-        const domain = (await this.getCustomDomain()) ?? `${this.owner}.github.io`;
-        return `https://${domain}/${this.repo}/${this.subFolder}`;
+        return `${domain}/${this.repo}/${this.subFolder}`;
     }
-    async isPagesEnabled() {
-        try {
-            const response = await github.getOctokit(this.token)
-                .request('GET /repos/{owner}/{repo}/pages', {
-                owner: this.owner,
-                repo: this.repo,
-                headers: {
-                    'X-GitHub-Api-Version': '2022-11-28'
-                }
-            });
-            const branch = response.data.source?.branch;
-            const type = response.data.build_type;
-            if (type != 'legacy' || branch !== this.branch) {
-                core.startGroup('Error');
-                core.error(`Ensure that GitHub pages is configured to deploy from '${this.branch}' branch.`);
-                core.error('https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site');
-                core.endGroup();
-                return false;
-            }
-            core.info(`GitHub pages will be deployed from '${branch}' branch!`);
-            return true;
-        }
-        catch (e) {
-            if (e instanceof RequestError) {
-                switch (e.status) {
-                    case 404: {
-                        console.error(`GitHub pages is not enabled for this repository`, e.message);
-                        return false;
-                    }
-                    default: {
-                        core.error(e.message);
-                        return false;
-                    }
-                }
-            }
-            throw e;
-        }
-    }
-    async getCustomDomain() {
+    async getPageUrl() {
         try {
             // Fetch the Pages configuration
             const response = await github.getOctokit(this.token).rest.repos.getPages({
                 owner: this.owner,
                 repo: this.repo,
             });
-            // Extract the custom domain
-            return response.data.cname;
+            const branch = response.data.source?.branch;
+            const type = response.data.build_type;
+            if (type != 'legacy' || branch !== this.branch) {
+                core.startGroup('Invalid configuration');
+                core.error(`Ensure that GitHub pages is configured to deploy from '${this.branch}' branch.`);
+                core.error('https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site');
+                core.endGroup();
+                process.exit(1);
+            }
+            core.info(`GitHub pages will be deployed from '${branch}' branch!`);
+            // Extract the domain
+            return response.data.html_url;
         }
-        catch (error) {
-            console.warn('Error checking for custom domain config:', error);
-            return null;
+        catch (e) {
+            if (e instanceof RequestError) {
+                switch (e.status) {
+                    case 404:
+                        {
+                            console.error(`GitHub pages is not enabled for this repository`, e.message);
+                        }
+                        break;
+                    default: {
+                        core.error(e.message);
+                    }
+                }
+                process.exit(1);
+            }
+            throw e;
         }
     }
     async getFilePathsFromDir(dir) {

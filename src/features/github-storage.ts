@@ -1,6 +1,6 @@
 import {isFileTypeAllure, IStorage, Order} from "allure-deployer-shared";
 import path from "node:path";
-import {GitHubArgInterface} from "../interfaces/args.interface.js";
+import {Inputs} from "../interfaces/inputs.interface.js";
 import fs from "fs/promises";
 import pLimit from "p-limit";
 import {ArtifactService} from "../services/artifact.service.js";
@@ -12,7 +12,7 @@ const HISTORY_ARCHIVE_NAME = "last-history";
 const RESULTS_ARCHIVE_NAME = "allure-results";
 export class GithubStorage implements IStorage {
 
-    constructor(private readonly provider: ArtifactService, readonly args: GitHubArgInterface) {
+    constructor(private readonly provider: ArtifactService, readonly args: Inputs) {
     }
     async stageFilesFromStorage(): Promise<void> {
         await this.createStagingDirectories();
@@ -48,7 +48,7 @@ export class GithubStorage implements IStorage {
 
     async uploadArtifacts(): Promise<void> {
         try {
-            await Promise.all([
+            await Promise.allSettled([
                 this.uploadNewResults(),
                 this.uploadHistory(),
             ]);

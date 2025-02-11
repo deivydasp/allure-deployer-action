@@ -45,7 +45,7 @@ export class GithubStorage {
     }
     async uploadArtifacts() {
         try {
-            await Promise.all([
+            await Promise.allSettled([
                 this.uploadNewResults(),
                 this.uploadHistory(),
             ]);

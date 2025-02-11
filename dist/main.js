@@ -9,10 +9,10 @@ import { GithubHost } from "./features/hosting/github.host.js";
 import github from "@actions/github";
 import core from "@actions/core";
 import { copyDirectory, setGoogleCredentialsEnv, validateSlackConfig } from "./utilities/util.js";
-import { Target } from "./interfaces/args.interface.js";
+import { Target } from "./interfaces/inputs.interface.js";
 import { ArtifactService } from "./services/artifact.service.js";
 import { GithubStorage } from "./features/github-storage.js";
-import fsSync from "fs";
+import fs from "fs";
 function getTarget() {
     const target = core.getInput("target", { required: true }).toLowerCase();
     if (!["firebase", "github"].includes(target)) {
@@ -37,7 +37,7 @@ export function main() {
         const retries = getRetries();
         const runtimeDir = await getRuntimeDirectory();
         const gitWorkspace = path.posix.join(runtimeDir, 'report');
-        fsSync.mkdirSync(gitWorkspace, { recursive: true });
+        await fs.promises.mkdir(gitWorkspace, { recursive: true });
         const reportDir = path.posix.join(gitWorkspace, core.getInput('github_subfolder'));
         const storageRequired = showHistory || retries > 0;
         const [owner, repo] = getInputOrUndefined('github_pages_repo', true).split('/');
@@ -61,8 +61,8 @@ export function main() {
         if (target === Target.FIREBASE) {
             const credentials = getInputOrUndefined("google_credentials_json");
             if (!credentials) {
-                core.setFailed("Error: Firebase Hosting requires a valid 'google_credentials_json'.");
-                return;
+                core.error("Firebase Hosting requires a valid 'google_credentials_json'.");
+                process.exit(1);
             }
             let firebaseProjectId = (await setGoogleCredentialsEnv(credentials)).project_id;
             args.googleCredentialData = credentials;

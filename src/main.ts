@@ -29,10 +29,10 @@ import {GithubHost} from "./features/hosting/github.host.js";
 import github from "@actions/github";
 import core from "@actions/core";
 import {copyDirectory, setGoogleCredentialsEnv, validateSlackConfig} from "./utilities/util.js";
-import {GitHubArgInterface, Target} from "./interfaces/args.interface.js";
+import {Inputs, Target} from "./interfaces/inputs.interface.js";
 import {ArtifactService, ArtifactServiceConfig} from "./services/artifact.service.js";
 import {GithubStorage} from "./features/github-storage.js";
-import fsSync from "fs";
+import fs from "fs";
 
 function getTarget(): Target {
     const target = core.getInput("target", {required: true}).toLowerCase();
@@ -62,11 +62,11 @@ export function main() {
         const retries: number = getRetries()
         const runtimeDir = await getRuntimeDirectory();
         const gitWorkspace = path.posix.join(runtimeDir, 'report')
-        fsSync.mkdirSync(gitWorkspace, {recursive: true});
+        await fs.promises.mkdir(gitWorkspace, {recursive: true});
         const reportDir = path.posix.join(gitWorkspace, core.getInput('github_subfolder'));
         const storageRequired: boolean = showHistory || retries > 0
         const [owner, repo] = getInputOrUndefined('github_pages_repo', true)!.split('/')
-        const args: GitHubArgInterface = {
+        const args: Inputs = {
             reportLanguage: getInputOrUndefined('language'),
             downloadRequired: storageRequired,
             uploadRequired: storageRequired,
@@ -87,8 +87,8 @@ export function main() {
         if (target === Target.FIREBASE) {
             const credentials = getInputOrUndefined("google_credentials_json");
             if (!credentials) {
-                core.setFailed("Error: Firebase Hosting requires a valid 'google_credentials_json'.");
-                return;
+                core.error("Firebase Hosting requires a valid 'google_credentials_json'.");
+                process.exit(1);
             }
             let firebaseProjectId = (await setGoogleCredentialsEnv(credentials)).project_id;
             args.googleCredentialData = credentials;
@@ -112,7 +112,7 @@ export function main() {
     })();
 }
 
-async function executeDeployment(args: GitHubArgInterface) {
+async function executeDeployment(args: Inputs) {
     try {
 
         const storage = args.storageRequired ? await initializeStorage(args) : undefined
@@ -161,7 +161,7 @@ function getGitHubHost({
     return new GithubHost(new GithubPagesService(config));
 }
 
-async function initializeStorage(args: GitHubArgInterface): Promise<IStorage | undefined> {
+async function initializeStorage(args: Inputs): Promise<IStorage | undefined> {
     switch (args.target) {
         case Target.GITHUB: {
             const config: ArtifactServiceConfig = {
@@ -284,7 +284,7 @@ async function copyReportToCustomDir(reportDir: string): Promise<void> {
 }
 
 async function sendNotifications(
-    args: GitHubArgInterface,
+    args: Inputs,
     resultStatus: ReportStatistic,
     reportUrl?: string,
     environment?: Map<string, string>

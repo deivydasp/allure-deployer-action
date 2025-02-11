@@ -31,6 +31,6 @@ export class GitHubNotifier {
         else {
             promises.push(this.client.updateSummary(message.trim()));
         }
-        await Promise.all(promises);
+        await Promise.allSettled(promises);
     }
 }

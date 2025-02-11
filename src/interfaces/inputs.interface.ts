@@ -1,5 +1,5 @@
 import {ArgsInterface} from "allure-deployer-shared";
-export interface GitHubArgInterface extends ArgsInterface{
+export interface Inputs extends ArgsInterface{
     googleCredentialData?: string;
     githubToken?: string;
     target: Target;
