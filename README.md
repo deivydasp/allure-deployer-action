@@ -206,6 +206,8 @@ jobs:
 
 - **GitHub Hosting:**
   - Ensure `github_token` permissions include `contents: write` and `actions: write`
+    - `contents: write` permission is used to push report files to `github_pages_branch`
+    - `actions: write` is used to back up Allure History and Retries in GitHub Artifacts.
   - Ensure that GitHub Pages is configured to deploy from the `github_pages_branch` provided. Default branch is `gh-pages` 
 - **Firebase Hosting:**  
   Export a [service account](https://firebase.google.com/docs/admin/setup#initialize_the_sdk_in_non-google_environments) JSON file from your Firebase Console.

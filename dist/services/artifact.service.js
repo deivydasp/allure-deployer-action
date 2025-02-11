@@ -13,6 +13,15 @@ export class ArtifactService {
         this.owner = owner;
         this.repo = repo;
     }
+    async hasArtifactPermission() {
+        try {
+            await this.getFiles({ matchGlob: 'last-history', maxResults: 1 });
+            return true;
+        }
+        catch (e) {
+            return false;
+        }
+    }
     async deleteFile(id) {
         await this.octokit.request('DELETE /repos/{owner}/{repo}/actions/artifacts/{artifact_id}', {
             owner: this.owner,

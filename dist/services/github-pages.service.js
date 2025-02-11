@@ -35,8 +35,7 @@ export class GithubPagesService {
         await this.git.add(files);
         await this.git.commit(`Allure report for GitHub run: ${github.context.runId}`);
         await this.git.push('origin', this.branch);
-        console.log(`Allure report pages commited to '${this.subFolder}' directory on '${this.branch}' branch`);
-        console.log(`Ensure that your GitHub Pages is configured to deploy from '${this.branch}' branch.`);
+        console.log(`Allure report pages pushed to '${this.subFolder}' directory on '${this.branch}' branch`);
     }
     async setupBranch() {
         const domain = await this.getPageUrl();
@@ -65,7 +64,6 @@ export class GithubPagesService {
         }
         else {
             await this.git.checkoutBranch(this.branch, `origin/${this.branch}`);
-            console.log(`Checked out branch '${this.branch}'.`);
         }
         return normalizeUrl(`${domain}/${this.subFolder}`);
     }

@@ -87,7 +87,6 @@ jobs:
     runs-on: ${{ github.event.inputs.runner }}
     permissions:
       contents: write
-      actions: write
     steps:
       - uses: actions/checkout@v4.1.5
       - name: Deploy Reports to GitHub pages
@@ -96,6 +95,8 @@ jobs:
           target: 'github'
           github_pages_branch: 'gh-pages'
           allure_results_path: 'allure-results'
+          show_history: ${{github.event.inputs.show-history}}
+          retries: ${{github.event.inputs.retries}}
           report_name: ${{github.event.inputs.report-name}}
           language: ${{github.event.inputs.report-lang}}
-#          github_subfolder: '${{ github.event.inputs.subfolder}}'
+          github_subfolder: 'local-action'

@@ -128,7 +128,12 @@ async function initializeStorage(args) {
                 repo: args.repo,
                 token: args.githubToken
             };
-            return new GithubStorage(new ArtifactService(config), args);
+            const service = new ArtifactService(config);
+            if (await service.hasArtifactPermission()) {
+                return new GithubStorage(service, args);
+            }
+            core.warning("Your GitHub token does not have 'actions: write' permission to access GitHub Artifacts. History and Retries will not be included in test report");
+            return undefined;
         }
         case Target.FIREBASE: {
             if (args.storageBucket && args.googleCredentialData) {

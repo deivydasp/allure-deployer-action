@@ -68,9 +68,7 @@ export class GithubPagesService implements GithubPagesInterface {
         await this.git.add(files);
         await this.git.commit(`Allure report for GitHub run: ${github.context.runId}`);
         await this.git.push('origin', this.branch);
-
-        console.log(`Allure report pages commited to '${this.subFolder}' directory on '${this.branch}' branch`);
-        console.log(`Ensure that your GitHub Pages is configured to deploy from '${this.branch}' branch.`);
+        console.log(`Allure report pages pushed to '${this.subFolder}' directory on '${this.branch}' branch`);
     }
 
     async setupBranch(): Promise<string> {
@@ -107,7 +105,6 @@ export class GithubPagesService implements GithubPagesInterface {
             console.log(`Branch '${this.branch}' created from '${defaultBranch}'.`);
         } else {
             await this.git.checkoutBranch(this.branch, `origin/${this.branch}`);
-            console.log(`Checked out branch '${this.branch}'.`);
         }
 
         return normalizeUrl(`${domain}/${this.subFolder}`);

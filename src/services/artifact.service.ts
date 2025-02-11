@@ -51,6 +51,15 @@ export class ArtifactService implements StorageProvider {
         this.repo = repo;
     }
 
+    async hasArtifactPermission(): Promise<boolean> {
+        try {
+            await this.getFiles({matchGlob: 'last-history', maxResults: 1})
+            return true
+        }catch (e) {
+            return false;
+        }
+    }
+
     async deleteFile(id: number): Promise<void> {
         await this.octokit.request('DELETE /repos/{owner}/{repo}/actions/artifacts/{artifact_id}', {
             owner: this.owner,
