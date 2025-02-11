@@ -6,6 +6,7 @@ import github from "@actions/github";
 import pLimit from "p-limit";
 import core from "@actions/core";
 import {RequestError} from "@octokit/request-error";
+import normalizeUrl from "normalize-url";
 
 export type GitHubConfig = {
     owner: string;
@@ -92,12 +93,9 @@ export class GithubPagesService implements GithubPagesInterface {
         const remote = `${github.context.serverUrl}/${this.owner}/${this.repo}.git`
         await this.git.addRemote('origin', remote);
         // console.log(`Git remote set to: ${remote}`);
-        const kk = await this.git.fetch('origin', this.branch);
-        console.log(`Fetch results: ${JSON.stringify(kk, null, 2)}`);
+        const fetchResult = await this.git.fetch('origin', this.branch);
 
-        const branchList = await this.git.branch(['-r', '--list', `origin/${this.branch}`]);
-
-        if (branchList.all.length === 0) {
+        if (fetchResult.branches.length === 0) {
             console.log(`Remote branch '${this.branch}' does not exist. Creating it from the default branch.`);
 
             const defaultBranch = (await this.git.raw(['symbolic-ref', 'refs/remotes/origin/HEAD']))
@@ -112,7 +110,7 @@ export class GithubPagesService implements GithubPagesInterface {
             console.log(`Checked out branch '${this.branch}'.`);
         }
 
-        return `${domain}/${this.repo}/${this.subFolder}`;
+        return normalizeUrl(`${domain}/${this.subFolder}`);
     }
 
     private async getPageUrl(): Promise<string> {
