@@ -7,7 +7,7 @@ import { GitHubNotifier } from "./features/messaging/github-notifier.js";
 import { GithubPagesService } from "./services/github-pages.service.js";
 import { GithubHost } from "./features/hosting/github.host.js";
 import github from "@actions/github";
-import { error, setFailed, warning, info } from "@actions/core";
+import { error, warning, info } from "@actions/core";
 import { copyDirectory, setGoogleCredentialsEnv, validateSlackConfig } from "./utilities/util.js";
 import { ArtifactService } from "./services/artifact.service.js";
 import { GithubStorage } from "./features/github-storage.js";
@@ -36,7 +36,7 @@ export function main() {
         if (inputs.target === 'firebase') {
             const credentials = inputs.google_credentials_json;
             if (!credentials) {
-                error("Firebase Hosting requires a valid 'google_credentials_json'.");
+                error("Firebase Hosting require a valid 'google_credentials_json'.");
                 process.exit(1);
             }
             let firebaseProjectId = (await setGoogleCredentialsEnv(credentials)).project_id;
@@ -45,12 +45,12 @@ export function main() {
         }
         else {
             const token = inputs.github_token;
-            if (!token) {
-                setFailed("Error: Github Pages require a 'github_token'.");
-                return;
+            if (!token) { // Check for empty string
+                error("Github Pages require a valid 'github_token'");
+                process.exit(1);
             }
             args.host = getGitHubHost({
-                token: inputs.github_token,
+                token,
                 reportDir,
                 gitWorkspace
             });
