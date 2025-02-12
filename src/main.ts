@@ -40,7 +40,7 @@ export function main() {
         const runtimeDir = await getRuntimeDirectory();
         const gitWorkspace = path.posix.join(runtimeDir, 'report')
         await fs.promises.mkdir(gitWorkspace, {recursive: true});
-        const reportDir = path.posix.join(gitWorkspace, inputs.github_subfolder);
+        const reportDir = path.posix.join(gitWorkspace, github.context.runNumber.toString());
         const storageRequired: boolean = inputs.show_history || inputs.retries > 0
         const args: ArgsInterface = {
             downloadRequired: storageRequired,
@@ -115,14 +115,13 @@ function getGitHubHost({
     reportDir: string;
     gitWorkspace: string;
 }): GithubHost {
-    const subFolder = inputs.github_subfolder;
     const branch = inputs.github_pages_branch!;
     const [owner, repo] = inputs.github_pages_repo!.split('/')
     const config: GitHubConfig = {
         owner,
         repo,
         workspace: gitWorkspace,
-        token, subFolder, branch,
+        token, branch,
         reportDir
     }
     return new GithubHost(new GithubPagesService(config));

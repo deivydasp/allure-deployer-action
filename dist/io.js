@@ -34,12 +34,12 @@ const inputs = {
     github_token: getInput('github_token'),
     github_pages_branch: getInputOrUndefined('github_pages_branch'),
     github_pages_repo: getInput('github_pages_repo'),
-    github_subfolder: getInput('github_subfolder'),
     gcs_bucket: getInputOrUndefined('gcs_bucket'),
     gcs_bucket_prefix: getInputOrUndefined('gcs_bucket_prefix'),
     google_credentials_json: getInputOrUndefined('google_credentials_json'),
     pr_comment: getBooleanInput('pr_comment'),
     slack_channel: getInput('slack_channel'),
     slack_token: getInput('slack_token'),
+    keep: getInput('keep'),
 };
 export default inputs;

@@ -4,9 +4,10 @@ import simpleGit, {CheckRepoActions, SimpleGit} from "simple-git";
 import {GithubPagesInterface} from "../interfaces/github-pages.interface.js";
 import github from "@actions/github";
 import pLimit from "p-limit";
-import core from "@actions/core";
+import core, {info} from "@actions/core";
 import {RequestError} from "@octokit/request-error";
 import normalizeUrl from "normalize-url";
+import inputs from "../io.js";
 
 export type GitHubConfig = {
     owner: string;
@@ -14,7 +15,6 @@ export type GitHubConfig = {
     branch: string;
     workspace: string;
     token: string;
-    subFolder: string;
     reportDir: string;
 };
 
@@ -26,6 +26,8 @@ export class GithubPagesService implements GithubPagesInterface {
     subFolder: string;
     reportDir: string;
     token: string;
+    workspace: string;
+    pageUrl?: string;
 
     constructor({
                     branch,
@@ -33,22 +35,23 @@ export class GithubPagesService implements GithubPagesInterface {
                     token,
                     repo,
                     owner,
-                    subFolder,
                     reportDir
                 }: GitHubConfig) {
         this.branch = branch;
         this.owner = owner;
         this.repo = repo;
-        this.subFolder = subFolder;
         this.reportDir = reportDir;
-        this.git = simpleGit({ baseDir: workspace });
+        this.git = simpleGit({baseDir: workspace});
         this.token = token;
+        this.workspace = workspace;
+        this.subFolder = github.context.runNumber.toString()
     }
 
     async deployPages(): Promise<void> {
         const [reportDirExists, isRepo] = await Promise.all([
             fs.existsSync(this.reportDir),
-            this.git.checkIsRepo(CheckRepoActions.IS_REPO_ROOT)
+            this.git.checkIsRepo(CheckRepoActions.IS_REPO_ROOT),
+            this.deleteOldReports()
         ]);
 
         if (!reportDirExists) {
@@ -59,15 +62,20 @@ export class GithubPagesService implements GithubPagesInterface {
             throw new Error('No repository found. Call setupBranch() to initialize.');
         }
 
-        const files: string[] = await this.getFilePathsFromDir(this.reportDir);
-        if (files.length === 0) {
+        const [reportFiles] = await Promise.all([
+            this.getFilePathsFromDir(this.reportDir),
+            this.createRedirectPage(this.pageUrl!)
+        ]);
+
+        if (reportFiles.length === 0) {
             core.error(`No files found in directory: ${this.reportDir}. Deployment aborted.`);
             process.exit(1);
         }
 
-        await this.git.add(files);
+        await this.git.add(reportFiles);
         await this.git.commit(`Allure report for GitHub run: ${github.context.runId}`);
         await this.git.push('origin', this.branch);
+
         console.log(`Allure report pages pushed to '${this.subFolder}' directory on '${this.branch}' branch`);
     }
 
@@ -119,7 +127,7 @@ export class GithubPagesService implements GithubPagesInterface {
             });
             const branch = response.data.source?.branch;
             const type = response.data.build_type
-            if(type != 'legacy' || branch !== this.branch){
+            if (type != 'legacy' || branch !== this.branch) {
                 core.startGroup('Invalid configuration')
                 core.error(`Ensure that GitHub pages is configured to deploy from '${this.branch}' branch.`);
                 core.error('https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site')
@@ -128,13 +136,15 @@ export class GithubPagesService implements GithubPagesInterface {
             }
             core.info(`GitHub pages will be deployed from '${branch}' branch!`);
             // Extract the domain
-            return response.data.html_url!;
+            this.pageUrl = response.data.html_url!
+            return this.pageUrl;
         } catch (e) {
-            if(e instanceof RequestError) {
+            if (e instanceof RequestError) {
                 switch (e.status) {
                     case 404: {
                         console.error(`GitHub pages is not enabled for this repository`, e.message);
-                    } break;
+                    }
+                        break;
                     default: {
                         core.error(e.message);
                     }
@@ -145,12 +155,65 @@ export class GithubPagesService implements GithubPagesInterface {
         }
     }
 
+    private async createRedirectPage(url: string): Promise<void> {
+        const htmlContent = `<!DOCTYPE html>
+<meta charset="utf-8">
+<meta http-equiv="refresh" content="0; URL=${normalizeUrl(`${url}/index.html`)}">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">`;
+
+        const filePath = path.posix.join(this.workspace, 'index.html')
+        await fs.promises.writeFile(filePath, htmlContent);
+        this.git.add(filePath)
+        info(`Redirect file created at ${this.workspace}`);
+    }
+
+    private async deleteOldReports(): Promise<void> {
+      try {
+          const entries: Dirent[] = await fs.promises.readdir(this.workspace, {withFileTypes: true});
+          const limit = pLimit(5)
+          const paths = (await Promise.all(
+              entries.map(entry =>
+                  limit(async () => {
+                      const indexFilePath = path.posix.join(entry.parentPath, entry.name, 'index.html')
+                      if (entry.isDirectory() &&
+                          fs.existsSync(indexFilePath) &&
+                          this.isPositiveInteger(entry.name)) {
+                          return entry.name
+                      }
+                      return undefined
+                  })
+              )
+          )).filter((path: string | undefined): path is string => Boolean(path))
+              .sort((a: string, b: string) => {
+                  return Number(a) - Number(b);
+              });
+
+          if (paths.length >= inputs.keep) {
+              const pathsToDelete = paths.slice(0, paths.length - inputs.keep);
+              await Promise.all(pathsToDelete.map((pathToDelete: string) => limit(
+                  async (): Promise<void> => {
+                      await fs.promises.rm(path.posix.join(this.workspace, pathToDelete), {recursive: true, force: true})
+                  }
+              )))
+              await this.git.add('-u')
+          }
+      }catch (e) {
+          console.warn(`Failed to delete old reports: `, e)
+      }
+    }
+
+    private isPositiveInteger(str: string): boolean {
+        const num = Number(str);
+        return Number.isInteger(num) && num > 0;
+    }
+
     private async getFilePathsFromDir(dir: string): Promise<string[]> {
         const files: string[] = [];
         const limit: pLimit.Limit = pLimit(10); // Limit concurrent directory operations
 
         const readDirectory = async (currentDir: string) => {
-            const entries: Dirent[] = await fs.promises.readdir(currentDir, { withFileTypes: true });
+            const entries: Dirent[] = await fs.promises.readdir(currentDir, {withFileTypes: true});
 
             await Promise.all(
                 entries.map(entry =>

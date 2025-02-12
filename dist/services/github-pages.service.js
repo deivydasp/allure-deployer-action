@@ -3,23 +3,26 @@ import path from "node:path";
 import simpleGit, { CheckRepoActions } from "simple-git";
 import github from "@actions/github";
 import pLimit from "p-limit";
-import core from "@actions/core";
+import core, { info } from "@actions/core";
 import { RequestError } from "@octokit/request-error";
 import normalizeUrl from "normalize-url";
+import inputs from "../io.js";
 export class GithubPagesService {
-    constructor({ branch, workspace, token, repo, owner, subFolder, reportDir }) {
+    constructor({ branch, workspace, token, repo, owner, reportDir }) {
         this.branch = branch;
         this.owner = owner;
         this.repo = repo;
-        this.subFolder = subFolder;
         this.reportDir = reportDir;
         this.git = simpleGit({ baseDir: workspace });
         this.token = token;
+        this.workspace = workspace;
+        this.subFolder = github.context.runNumber.toString();
     }
     async deployPages() {
         const [reportDirExists, isRepo] = await Promise.all([
             fs.existsSync(this.reportDir),
-            this.git.checkIsRepo(CheckRepoActions.IS_REPO_ROOT)
+            this.git.checkIsRepo(CheckRepoActions.IS_REPO_ROOT),
+            this.deleteOldReports()
         ]);
         if (!reportDirExists) {
             throw new Error(`Directory does not exist: ${this.reportDir}`);
@@ -27,12 +30,15 @@ export class GithubPagesService {
         if (!isRepo) {
             throw new Error('No repository found. Call setupBranch() to initialize.');
         }
-        const files = await this.getFilePathsFromDir(this.reportDir);
-        if (files.length === 0) {
+        const [reportFiles] = await Promise.all([
+            this.getFilePathsFromDir(this.reportDir),
+            this.createRedirectPage(this.pageUrl)
+        ]);
+        if (reportFiles.length === 0) {
             core.error(`No files found in directory: ${this.reportDir}. Deployment aborted.`);
             process.exit(1);
         }
-        await this.git.add(files);
+        await this.git.add(reportFiles);
         await this.git.commit(`Allure report for GitHub run: ${github.context.runId}`);
         await this.git.push('origin', this.branch);
         console.log(`Allure report pages pushed to '${this.subFolder}' directory on '${this.branch}' branch`);
@@ -85,7 +91,8 @@ export class GithubPagesService {
             }
             core.info(`GitHub pages will be deployed from '${branch}' branch!`);
             // Extract the domain
-            return response.data.html_url;
+            this.pageUrl = response.data.html_url;
+            return this.pageUrl;
         }
         catch (e) {
             if (e instanceof RequestError) {
@@ -103,6 +110,49 @@ export class GithubPagesService {
             }
             throw e;
         }
+    }
+    async createRedirectPage(url) {
+        const htmlContent = `<!DOCTYPE html>
+<meta charset="utf-8">
+<meta http-equiv="refresh" content="0; URL=${normalizeUrl(`${url}/index.html`)}">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">`;
+        const filePath = path.posix.join(this.workspace, 'index.html');
+        await fs.promises.writeFile(filePath, htmlContent);
+        this.git.add(filePath);
+        info(`Redirect file created at ${this.workspace}`);
+    }
+    async deleteOldReports() {
+        try {
+            const entries = await fs.promises.readdir(this.workspace, { withFileTypes: true });
+            const limit = pLimit(5);
+            const paths = (await Promise.all(entries.map(entry => limit(async () => {
+                const indexFilePath = path.posix.join(entry.parentPath, entry.name, 'index.html');
+                if (entry.isDirectory() &&
+                    fs.existsSync(indexFilePath) &&
+                    this.isPositiveInteger(entry.name)) {
+                    return entry.name;
+                }
+                return undefined;
+            })))).filter((path) => Boolean(path))
+                .sort((a, b) => {
+                return Number(a) - Number(b);
+            });
+            if (paths.length >= inputs.keep) {
+                const pathsToDelete = paths.slice(0, paths.length - inputs.keep);
+                await Promise.all(pathsToDelete.map((pathToDelete) => limit(async () => {
+                    await fs.promises.rm(path.posix.join(this.workspace, pathToDelete), { recursive: true, force: true });
+                })));
+                await this.git.add('-u');
+            }
+        }
+        catch (e) {
+            console.warn(`Failed to delete old reports: `, e);
+        }
+    }
+    isPositiveInteger(str) {
+        const num = Number(str);
+        return Number.isInteger(num) && num > 0;
     }
     async getFilePathsFromDir(dir) {
         const files = [];
