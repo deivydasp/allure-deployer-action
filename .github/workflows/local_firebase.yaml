@@ -1,0 +1,55 @@
+name: Test Firebase locally
+on:
+  workflow_dispatch:
+    inputs:
+      runner:
+        description: Runner to use
+        type: choice
+        options:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+        default: ubuntu-latest
+      retries:
+        description: 'Number of test runs to show as retries in report'
+        type: number
+        default: 10
+      show-history:
+        description: 'Show keep history in report'
+        type: boolean
+        default: true
+      report-name:
+        description: 'Title of the report'
+        default: 'Allure Report'
+      report-lang:
+        description: 'Allure report language'
+        type: choice
+        default: en
+        options:
+          - en
+          - ru
+          - fr
+          - de
+      slack:
+        description: "Send slack message"
+        type: boolean
+        default: false
+jobs:
+  firebase:
+    runs-on: ${{ github.event.inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4.1.5
+      - name: Deploy Reports to Firebase with History and Retries
+        uses: ./
+        with:
+          target: 'firebase'
+          google_credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+          allure_results_path: 'allure-results'
+          gcs_bucket: ${{secrets.STORAGE_BUCKET}}
+          slack_channel: ${{github.event.inputs.slack == true && secrets.SLACK_CHANNEL || '' }}
+          slack_token: ${{github.event.inputs.slack == true && secrets.SLACK_TOKEN || ''}}
+          show_history: ${{github.event.inputs.show-history}}
+          retries: ${{github.event.inputs.retries}}
+          gcs_bucket_prefix: 'test-action-firebase'
+          report_name: ${{github.event.inputs.report-name}}
+          language: ${{github.event.inputs.report-lang}}

@@ -167,11 +167,9 @@ async function initializeStorage(args: ArgsInterface): Promise<IStorage | undefi
             } else if (!inputs.gcs_bucket) {
                 info('No storage bucket provided. History and Retries will be disabled.');
             }
-            return undefined;
         }
-        default:
-            return undefined
     }
+    return undefined;
 }
 
 async function getCloudStorageService({storageBucket, googleCredentialData}: {

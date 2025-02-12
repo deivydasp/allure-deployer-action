@@ -1,4 +1,4 @@
-name: Test Local Action
+name: Test GitHub locally
 on:
   workflow_dispatch:
     inputs:
@@ -6,10 +6,9 @@ on:
         description: 'Job to run'
         type: choice
         options:
-          - gh-pages
-          - firebase
-          - gh-pages-no-backup
-        default: firebase
+          - gh
+          - gh-no-backup
+        default: gh
       runner:
         description: Runner to use
         type: choice
@@ -38,31 +37,19 @@ on:
           - ru
           - fr
           - de
-#      subfolder:
-#        description: 'GitHub sub directory'
-#        default: 'local-action'
+      subfolder:
+        description: 'GitHub sub directory'
+        default: 'local-action'
+      branch:
+        description: 'GitHub pages deployment branch'
+        default: 'gh-pages'
+      slack:
+        description: "Send slack message"
+        type: boolean
+        default: false
 jobs:
-  firebase:
-    if: ${{ github.event.inputs.job == 'firebase' }}
-    runs-on: ${{ github.event.inputs.runner }}
-    steps:
-      - uses: actions/checkout@v4.1.5
-      - name: Deploy Reports to Firebase with History and Retries
-        uses: ./
-        with:
-          target: 'firebase'
-          google_credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
-          allure_results_path: 'allure-results'
-          gcs_bucket: ${{secrets.STORAGE_BUCKET}}
-          slack_channel: ${{secrets.SLACK_CHANNEL}}
-          slack_token: ${{secrets.SLACK_TOKEN}}
-          show_history: ${{github.event.inputs.show-history}}
-          retries: ${{github.event.inputs.retries}}
-          gcs_bucket_prefix: 'test-action-firebase'
-          report_name: ${{github.event.inputs.report-name}}
-          language: ${{github.event.inputs.report-lang}}
-  gh-pages:
-    if: ${{ github.event.inputs.job == 'gh-pages' }}
+  gh:
+    if: ${{ github.event.inputs.job == 'gh' }}
     runs-on: ${{ github.event.inputs.runner }}
     permissions:
       contents: write
@@ -73,17 +60,18 @@ jobs:
         uses: ./
         with:
           target: 'github'
-          github_pages_branch: 'gh-pages'
+          github_pages_branch: ${{github.event.inputs.branch}}
           allure_results_path: 'allure-results'
           show_history: ${{github.event.inputs.show-history}}
           retries: ${{github.event.inputs.retries}}
           report_name: ${{github.event.inputs.report-name}}
           language: ${{github.event.inputs.report-lang}}
-#          github_subfolder: '${{ github.event.inputs.subfolder}}'
+          github_subfolder: '${{ github.event.inputs.subfolder }}'
+          slack_channel: ${{github.event.inputs.slack == true && secrets.SLACK_CHANNEL || '' }}
+          slack_token: ${{github.event.inputs.slack == true && secrets.SLACK_TOKEN || ''}}
 
-
-  gh-pages-no-backup:
-    if: ${{ github.event.inputs.job == 'gh-pages-no-backup'}}
+  gh-no-backup:
+    if: ${{ github.event.inputs.job == 'gh-no-backup'}}
     runs-on: ${{ github.event.inputs.runner }}
     permissions:
       contents: write
@@ -94,10 +82,12 @@ jobs:
         uses: ./
         with:
           target: 'github'
-          github_pages_branch: 'gh-pages'
+          github_pages_branch: ${{github.event.inputs.branch}}
           allure_results_path: 'allure-results'
           show_history: ${{github.event.inputs.show-history}}
           retries: ${{github.event.inputs.retries}}
           report_name: ${{github.event.inputs.report-name}}
           language: ${{github.event.inputs.report-lang}}
           github_subfolder: 'local-action'
+          slack_channel: ${{github.event.inputs.slack == true && secrets.SLACK_CHANNEL || '' }}
+          slack_token: ${{github.event.inputs.slack == true && secrets.SLACK_TOKEN || ''}}
