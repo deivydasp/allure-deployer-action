@@ -1,6 +1,5 @@
-import {isFileTypeAllure, IStorage, Order} from "allure-deployer-shared";
+import {GoogleStorageConfig, isFileTypeAllure, IStorage, Order} from "allure-deployer-shared";
 import path from "node:path";
-import {Inputs} from "../interfaces/inputs.interface.js";
 import fs from "fs/promises";
 import pLimit from "p-limit";
 import {ArtifactService} from "../services/artifact.service.js";
@@ -12,9 +11,11 @@ import core from "@actions/core";
 
 const HISTORY_ARCHIVE_NAME = "last-history";
 const RESULTS_ARCHIVE_NAME = "allure-results";
+
+export interface GithubStorageConfig extends GoogleStorageConfig {}
 export class GithubStorage implements IStorage {
 
-    constructor(private readonly provider: ArtifactService, readonly args: Inputs) {
+    constructor(private readonly provider: ArtifactService, readonly args: GithubStorageConfig) {
     }
     async stageFilesFromStorage(): Promise<void> {
         await this.createStagingDirectories();
