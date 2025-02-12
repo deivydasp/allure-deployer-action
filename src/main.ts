@@ -9,7 +9,6 @@ import {
     FirebaseHost,
     FirebaseService,
     getReportStats,
-    getRuntimeDirectory,
     GoogleStorage, GoogleStorageConfig,
     GoogleStorageService,
     IStorage,
@@ -31,16 +30,17 @@ import {error, warning, info} from "@actions/core";
 import {copyDirectory, setGoogleCredentialsEnv, validateSlackConfig} from "./utilities/util.js";
 import {ArtifactService, ArtifactServiceConfig} from "./services/artifact.service.js";
 import {GithubStorage, GithubStorageConfig} from "./features/github-storage.js";
-import fs from "fs";
+import {mkdir} from "fs/promises"
 import inputs from "./io.js";
 import normalizeUrl from "normalize-url";
+import * as os from "node:os";
 
 export function main() {
     (async () => {
-        const runtimeDir = await getRuntimeDirectory();
+        const runtimeDir = path.posix.join(os.tmpdir(), 'allure-report-deployer');
         const gitWorkspace = path.posix.join(runtimeDir, 'report')
-        await fs.promises.mkdir(gitWorkspace, {recursive: true});
         const reportDir = path.posix.join(gitWorkspace, github.context.runNumber.toString());
+        await mkdir(reportDir, {recursive: true});
         const storageRequired: boolean = inputs.show_history || inputs.retries > 0
         const args: ArgsInterface = {
             downloadRequired: storageRequired,
