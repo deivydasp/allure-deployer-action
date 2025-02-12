@@ -66,7 +66,6 @@ jobs:
           retries: ${{github.event.inputs.retries}}
           report_name: ${{github.event.inputs.report-name}}
           language: ${{github.event.inputs.report-lang}}
-          github_subfolder: '${{ github.event.inputs.subfolder }}'
           slack_channel: ${{github.event.inputs.slack == true && secrets.SLACK_CHANNEL || '' }}
           slack_token: ${{github.event.inputs.slack == true && secrets.SLACK_TOKEN || ''}}
 
@@ -88,6 +87,5 @@ jobs:
           retries: ${{github.event.inputs.retries}}
           report_name: ${{github.event.inputs.report-name}}
           language: ${{github.event.inputs.report-lang}}
-          github_subfolder: 'local-action'
           slack_channel: ${{github.event.inputs.slack == true && secrets.SLACK_CHANNEL || '' }}
           slack_token: ${{github.event.inputs.slack == true && secrets.SLACK_TOKEN || ''}}
