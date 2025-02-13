@@ -7,7 +7,7 @@ import fsSync from "fs";
 import unzipper from "unzipper";
 import { RequestError } from "@octokit/request-error";
 import core from "@actions/core";
-import inputs from "../io";
+import inputs from "../io.js";
 export class GithubStorage {
     constructor(provider, args) {
         this.provider = provider;
