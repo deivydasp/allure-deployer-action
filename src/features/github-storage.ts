@@ -8,15 +8,21 @@ import fsSync from "fs";
 import unzipper, {Entry} from "unzipper";
 import {RequestError} from "@octokit/request-error";
 import core from "@actions/core";
+import inputs from "../io.js";
 
-const HISTORY_ARCHIVE_NAME = "last-history";
-const RESULTS_ARCHIVE_NAME = "allure-results";
 
-export interface GithubStorageConfig extends GoogleStorageConfig {}
+export interface GithubStorageConfig extends GoogleStorageConfig {
+}
+
 export class GithubStorage implements IStorage {
+    private readonly HISTORY_ARCHIVE_NAME: string
+    private readonly RESULTS_ARCHIVE_NAME: string
 
     constructor(private readonly provider: ArtifactService, readonly args: GithubStorageConfig) {
+        this.HISTORY_ARCHIVE_NAME = `${inputs.gh_artifact_prefix}-last-history`;
+        this.RESULTS_ARCHIVE_NAME = `${inputs.gh_artifact_prefix}-allure-results`;
     }
+
     async stageFilesFromStorage(): Promise<void> {
         await this.createStagingDirectories();
         const tasks: Promise<void>[] = [];
@@ -83,7 +89,7 @@ export class GithubStorage implements IStorage {
     private async stageHistoryFiles(): Promise<void> {
         const files = await this.provider.getFiles({
             maxResults: 10,
-            matchGlob: HISTORY_ARCHIVE_NAME,
+            matchGlob: this.HISTORY_ARCHIVE_NAME,
             order: Order.byNewestToOldest
         });
 
@@ -101,7 +107,7 @@ export class GithubStorage implements IStorage {
                     try {
                         await this.provider.deleteFile(file.id);
                     } catch (error) {
-                        if(error instanceof RequestError && error.status === 403) {
+                        if (error instanceof RequestError && error.status === 403) {
                             core.warning(`Failed to delete outdated Allure History file. Ensure that GitHub token has 'actions: write' permission`)
                         } else {
                             console.warn("Delete file error:", error);
@@ -129,10 +135,10 @@ export class GithubStorage implements IStorage {
     private async stageResultFiles(retries: number): Promise<void> {
         let files = await this.provider.getFiles({
             order: Order.byOldestToNewest,
-            matchGlob: RESULTS_ARCHIVE_NAME,
+            matchGlob: this.RESULTS_ARCHIVE_NAME,
             maxResults: this.args.retries
         });
-        if(files.length === 0) return
+        if (files.length === 0) return
 
         const limit = pLimit(this.args.fileProcessingConcurrency);
         const tasks: Promise<void>[] = [];
@@ -143,7 +149,7 @@ export class GithubStorage implements IStorage {
                     try {
                         await this.provider.deleteFile(file.id);
                     } catch (error) {
-                        if(error instanceof RequestError && error.status === 403) {
+                        if (error instanceof RequestError && error.status === 403) {
                             core.warning(`Failed to delete outdated Allure Result files. Ensure that GitHub token has 'actions: write' permission`)
                         } else {
                             console.warn("Delete file error:", error);
@@ -165,6 +171,7 @@ export class GithubStorage implements IStorage {
         }
         await Promise.allSettled(tasks);
     }
+
     /**
      * Returns the path for the history folder.
      */
@@ -178,29 +185,29 @@ export class GithubStorage implements IStorage {
      */
     private async uploadNewResults(): Promise<void> {
         let resultPath: string
-        if(this.args.RESULTS_PATHS.length == 1){
+        if (this.args.RESULTS_PATHS.length == 1) {
             resultPath = this.args.RESULTS_PATHS[0]
-        }else {
+        } else {
             resultPath = path.join(os.tmpdir(), 'allure-deployer-results-temp')
             await this.copyResultFiles({from: this.args.RESULTS_PATHS, to: resultPath})
         }
-        await this.provider.upload(resultPath, RESULTS_ARCHIVE_NAME);
+        await this.provider.upload(resultPath, this.RESULTS_ARCHIVE_NAME);
     }
 
     /**
      * Zips and uploads the history archive to the remote storage.
      */
     private async uploadHistory(): Promise<void> {
-        await this.provider.upload(this.getHistoryFolder(), HISTORY_ARCHIVE_NAME);
+        await this.provider.upload(this.getHistoryFolder(), this.HISTORY_ARCHIVE_NAME);
     }
 
     private async copyResultFiles({
-                                        from,
-                                        to,
-                                        concurrency = 10,
-                                        overwrite = false,
-        exclude = ['executor.json', 'environment.properties']
-                                    }: {
+                                      from,
+                                      to,
+                                      concurrency = 10,
+                                      overwrite = false,
+                                      exclude = ['executor.json', 'environment.properties']
+                                  }: {
         from: string[]; // array of result directories
         to: string;
         concurrency?: number;
@@ -224,7 +231,7 @@ export class GithubStorage implements IStorage {
                     // Skip directories in Allure Result path, process files only
                     if (!file.isFile()) continue;
                     // Skip excluded files
-                    if(exclude.includes(path.basename(file.name))) continue
+                    if (exclude.includes(path.basename(file.name))) continue
 
                     copyPromises.push(
                         limit(async () => {

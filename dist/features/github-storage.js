@@ -7,12 +7,13 @@ import fsSync from "fs";
 import unzipper from "unzipper";
 import { RequestError } from "@octokit/request-error";
 import core from "@actions/core";
-const HISTORY_ARCHIVE_NAME = "last-history";
-const RESULTS_ARCHIVE_NAME = "allure-results";
+import inputs from "../io.js";
 export class GithubStorage {
     constructor(provider, args) {
         this.provider = provider;
         this.args = args;
+        this.HISTORY_ARCHIVE_NAME = `${inputs.gh_artifact_prefix}-last-history`;
+        this.RESULTS_ARCHIVE_NAME = `${inputs.gh_artifact_prefix}-allure-results`;
     }
     async stageFilesFromStorage() {
         await this.createStagingDirectories();
@@ -78,7 +79,7 @@ export class GithubStorage {
     async stageHistoryFiles() {
         const files = await this.provider.getFiles({
             maxResults: 10,
-            matchGlob: HISTORY_ARCHIVE_NAME,
+            matchGlob: this.HISTORY_ARCHIVE_NAME,
             order: Order.byNewestToOldest
         });
         if (files.length === 0) {
@@ -121,7 +122,7 @@ export class GithubStorage {
     async stageResultFiles(retries) {
         let files = await this.provider.getFiles({
             order: Order.byOldestToNewest,
-            matchGlob: RESULTS_ARCHIVE_NAME,
+            matchGlob: this.RESULTS_ARCHIVE_NAME,
             maxResults: this.args.retries
         });
         if (files.length === 0)
@@ -176,13 +177,13 @@ export class GithubStorage {
             resultPath = path.join(os.tmpdir(), 'allure-deployer-results-temp');
             await this.copyResultFiles({ from: this.args.RESULTS_PATHS, to: resultPath });
         }
-        await this.provider.upload(resultPath, RESULTS_ARCHIVE_NAME);
+        await this.provider.upload(resultPath, this.RESULTS_ARCHIVE_NAME);
     }
     /**
      * Zips and uploads the history archive to the remote storage.
      */
     async uploadHistory() {
-        await this.provider.upload(this.getHistoryFolder(), HISTORY_ARCHIVE_NAME);
+        await this.provider.upload(this.getHistoryFolder(), this.HISTORY_ARCHIVE_NAME);
     }
     async copyResultFiles({ from, to, concurrency = 10, overwrite = false, exclude = ['executor.json', 'environment.properties'] }) {
         const limit = pLimit(concurrency); // Limit concurrency

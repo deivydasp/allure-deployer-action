@@ -21,6 +21,9 @@ inputs:
   gcs_bucket_prefix:
     description: "Google Cloud/Firebase storage bucket path prefix to back up Allure results and history"
     required: false
+  gh_artifact_prefix:
+    description: "Github artifacts prefix for 'History and Retries'. Used to separate History and Retries in multi projects"
+    default: ${{ github.repository_id }}
   report_name:
     description: "Title of your report"
     default: "Allure Report"
