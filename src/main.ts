@@ -9,7 +9,6 @@ import {
     FirebaseHost,
     FirebaseService,
     getReportStats,
-    getRuntimeDirectory,
     GoogleStorage, GoogleStorageConfig,
     GoogleStorageService,
     IStorage,
@@ -31,16 +30,17 @@ import {error, warning, info} from "@actions/core";
 import {copyDirectory, setGoogleCredentialsEnv, validateSlackConfig} from "./utilities/util.js";
 import {ArtifactService, ArtifactServiceConfig} from "./services/artifact.service.js";
 import {GithubStorage, GithubStorageConfig} from "./features/github-storage.js";
-import fs from "fs";
+import {mkdir} from "fs/promises"
 import inputs from "./io.js";
 import normalizeUrl from "normalize-url";
+import * as os from "node:os";
 
 export function main() {
     (async () => {
-        const runtimeDir = await getRuntimeDirectory();
+        const runtimeDir = path.posix.join(os.tmpdir(), 'allure-report-deployer');
         const gitWorkspace = path.posix.join(runtimeDir, 'report')
-        await fs.promises.mkdir(gitWorkspace, {recursive: true});
-        const reportDir = path.posix.join(gitWorkspace, inputs.github_subfolder);
+        const reportDir = path.posix.join(gitWorkspace, github.context.runId.toString());
+        await mkdir(reportDir, {recursive: true, mode: 0o755});
         const storageRequired: boolean = inputs.show_history || inputs.retries > 0
         const args: ArgsInterface = {
             downloadRequired: storageRequired,
@@ -104,7 +104,7 @@ function getFirebaseHost({firebaseProjectId, REPORTS_DIR}: {
     firebaseProjectId: string;
     REPORTS_DIR: string;
 }): FirebaseHost {
-    return new FirebaseHost(new FirebaseService(firebaseProjectId, REPORTS_DIR));
+    return new FirebaseHost(new FirebaseService(firebaseProjectId, REPORTS_DIR), inputs.keep);
 }
 
 function getGitHubHost({
@@ -115,14 +115,13 @@ function getGitHubHost({
     reportDir: string;
     gitWorkspace: string;
 }): GithubHost {
-    const subFolder = inputs.github_subfolder;
     const branch = inputs.github_pages_branch!;
     const [owner, repo] = inputs.github_pages_repo!.split('/')
     const config: GitHubConfig = {
         owner,
         repo,
         workspace: gitWorkspace,
-        token, subFolder, branch,
+        token, branch,
         reportDir
     }
     return new GithubHost(new GithubPagesService(config));

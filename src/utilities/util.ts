@@ -148,7 +148,7 @@ export function getAbsoluteFilePaths(dir: string): string[] {
     const filePaths: string[] = []; // To store absolute file paths
 
     for (const entry of filesAndDirs) {
-        const fullPath = path.resolve(dir, entry); // Resolve to absolute path
+        const fullPath = path.posix.resolve(dir, entry); // Resolve to absolute path
         const stats = fsSync.statSync(fullPath);
 
         if (stats.isDirectory()) {

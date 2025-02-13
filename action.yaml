@@ -54,15 +54,15 @@ inputs:
   github_pages_branch:
     description: "Target branch for Deploying to GitHub Pages. Default: gh-pages"
     default: 'gh-pages'
-  github_subfolder:
-    description: "Git sub directory for test report when hosting with GitHub Pages. Default 'github.run_id'"
-    default: ${{ github.run_id }}
   language:
     description: "Allure report language"
     default: 'en'
   github_pages_repo:
     description: "GitHub repository to deploy GitHub pages. Example owner/repo"
     default: ${{ github.repository }}
+  keep:
+    description: "Number of test reports you want to keep alive"
+    default: '10'
 outputs:
   report_url:
     description: "URL to your test report"

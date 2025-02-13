@@ -17,7 +17,7 @@
     "@actions/github": "^6.0.0",
     "@octokit/request-error": "^6.1.6",
     "@octokit/rest": "^21.1.0",
-    "allure-deployer-shared": "1.2.7",
+    "allure-deployer-shared": "1.2.8",
     "normalize-url": "^8.0.1",
     "simple-git": "^3.27.0"
   },

@@ -2,7 +2,6 @@ export interface Inputs{
     google_credentials_json?: string;
     github_token: string;
     github_pages_branch?: string;
-    github_subfolder: string;
     github_pages_repo: string;
     gcs_bucket?: string;
     gcs_bucket_prefix?: string;
@@ -16,6 +15,7 @@ export interface Inputs{
     pr_comment: boolean;
     report_dir?: string;
     language: string;
+    keep: number
 }
 export interface GithubConfig {
     token: string;

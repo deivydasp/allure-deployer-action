@@ -190,9 +190,9 @@ jobs:
 | `slack_token`             | Slack app token for sending notifications.                                                                                           | None                | No        |
 | `pr_comment`              | Post report information as a pull request comment. Requires GitHub token with `pull_requests: write` and `issues: write` permissions | `true`              | No        |
 | `github_pages_branch`     | Branch used for GitHub Pages deployments.                                                                                            | `gh-pages`          | No        |
-| `github_subfolder`        | Sub directory to write the test reports files in Git                                                                                 | None                | No        |
 | `github_pages_repo`       | GitHub repository to deploy GitHub pages. Example owner/repository-nam                                                               | `github.repository` | No        |
 | `gcs_bucket_prefix`       | Path prefix for archived files in the GCP storage bucket when target is `firebase` .                                                 | None                | No        |
+| `keep`                    | Number of test reports you want to keep alive.                                                                                       | `10`                | No        |
 
 
 
