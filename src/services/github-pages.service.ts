@@ -1,13 +1,13 @@
-import fs, { Dirent } from "fs";
+import fs, {Dirent} from "fs";
 import path from "node:path";
-import simpleGit, { CheckRepoActions, SimpleGit } from "simple-git";
+import simpleGit, {CheckRepoActions, SimpleGit} from "simple-git";
 import github from "@actions/github";
 import pLimit from "p-limit";
 import core, {error, info} from "@actions/core";
-import { RequestError } from "@octokit/request-error";
+import {RequestError} from "@octokit/request-error";
 import normalizeUrl from "normalize-url";
 import inputs from "../io.js";
-import { GithubPagesInterface } from "../interfaces/github-pages.interface.js";
+import {GithubPagesInterface} from "../interfaces/github-pages.interface.js";
 
 export type GitHubConfig = {
     owner: string;
@@ -36,7 +36,7 @@ export class GithubPagesService implements GithubPagesInterface {
         this.reportDir = config.reportDir;
         this.workspace = config.workspace;
         this.token = config.token;
-        this.git = simpleGit({ baseDir: this.workspace });
+        this.git = simpleGit({baseDir: this.workspace});
         this.subFolder = github.context.runId.toString();
     }
 
@@ -73,7 +73,7 @@ export class GithubPagesService implements GithubPagesInterface {
         // await Promise.all([
         //     this.deleteOldReports(),
         //     this.createRedirectPage(normalizeUrl(`${this.pageUrl}/${this.subFolder}`))
-        // ])
+        // ]) Running them together cause git lock issues
         await this.deleteOldReports();
         await this.createRedirectPage(normalizeUrl(`${this.pageUrl}/${this.subFolder}`));
     }
@@ -158,16 +158,15 @@ export class GithubPagesService implements GithubPagesInterface {
     /** Deletes old Allure reports, keeping the latest `inputs.keep` */
     private async deleteOldReports(): Promise<void> {
         try {
-            const entries: Dirent[] = await fs.promises.readdir(this.workspace, { withFileTypes: true });
-            const limit = pLimit(5);
-
-            const paths = (
+            const entries: Dirent[] = await fs.promises.readdir(this.workspace, {withFileTypes: true});
+            const limit = pLimit(10);
+            let paths = (
                 await Promise.all(
                     entries.map((entry) =>
                         limit(async () => {
-                            const indexFilePath = path.posix.join(entry.parentPath, entry.name, "index.html");
-                            if (entry.isDirectory() && fs.existsSync(indexFilePath) && this.isPositiveInteger(entry.name)) {
-                                return entry.name;
+                            const reportIndexHtmlPath = path.posix.join(entry.parentPath, entry.name, 'index.html');
+                            if (entry.isDirectory() && fs.existsSync(reportIndexHtmlPath)) {
+                                return path.dirname(reportIndexHtmlPath); // Return directory name of index.html
                             }
                             return undefined
                         })
@@ -175,14 +174,13 @@ export class GithubPagesService implements GithubPagesInterface {
                 )
             ).filter(Boolean) as string[];
 
-            paths.sort((a, b) => Number(a) - Number(b));
-
             if (paths.length >= inputs.keep) {
+                paths = await this.sortPathsByModifiedTime(paths)
                 const pathsToDelete = paths.slice(0, paths.length - inputs.keep);
                 await Promise.all(
                     pathsToDelete.map((pathToDelete) =>
                         limit(async () => {
-                            await fs.promises.rm(path.posix.join(this.workspace, pathToDelete), { recursive: true, force: true });
+                            await fs.promises.rm(pathToDelete, {recursive: true, force: true});
                             info(`Old Report deleted from '${pathToDelete}'`);
                         })
                     )
@@ -194,10 +192,16 @@ export class GithubPagesService implements GithubPagesInterface {
         }
     }
 
-    /** Checks if a string is a positive integer */
-    private isPositiveInteger(str: string): boolean {
-        const num = Number(str);
-        return Number.isInteger(num) && num > 0;
+    async sortPathsByModifiedTime(paths: string[]): Promise<string[]> {
+        const limit = pLimit(5);
+        const fileStats: Awaited<{ file: string; mtimeMs: number }>[] = await Promise.all(
+            paths.map((file: string) => limit(async () => {
+                const stats = await fs.promises.stat(file);
+                return {file, mtimeMs: stats.mtimeMs};
+            }))
+        );
+        fileStats.sort((a, b) => a.mtimeMs - b.mtimeMs);
+        return fileStats.map((item) => item.file);
     }
 
     /** Recursively retrieves all file paths from a directory */
@@ -206,7 +210,7 @@ export class GithubPagesService implements GithubPagesInterface {
         const limit = pLimit(10);
 
         const readDirectory = async (currentDir: string) => {
-            const entries: Dirent[] = await fs.promises.readdir(currentDir, { withFileTypes: true });
+            const entries: Dirent[] = await fs.promises.readdir(currentDir, {withFileTypes: true});
 
             await Promise.all(
                 entries.map((entry) =>

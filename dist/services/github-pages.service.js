@@ -46,7 +46,7 @@ export class GithubPagesService {
         // await Promise.all([
         //     this.deleteOldReports(),
         //     this.createRedirectPage(normalizeUrl(`${this.pageUrl}/${this.subFolder}`))
-        // ])
+        // ]) Running them together cause git lock issues
         await this.deleteOldReports();
         await this.createRedirectPage(normalizeUrl(`${this.pageUrl}/${this.subFolder}`));
     }
@@ -114,19 +114,19 @@ export class GithubPagesService {
     async deleteOldReports() {
         try {
             const entries = await fs.promises.readdir(this.workspace, { withFileTypes: true });
-            const limit = pLimit(5);
-            const paths = (await Promise.all(entries.map((entry) => limit(async () => {
-                const indexFilePath = path.posix.join(entry.parentPath, entry.name, "index.html");
-                if (entry.isDirectory() && fs.existsSync(indexFilePath) && this.isPositiveInteger(entry.name)) {
-                    return entry.name;
+            const limit = pLimit(10);
+            let paths = (await Promise.all(entries.map((entry) => limit(async () => {
+                const reportIndexHtmlPath = path.posix.join(entry.parentPath, entry.name, 'index.html');
+                if (entry.isDirectory() && fs.existsSync(reportIndexHtmlPath)) {
+                    return path.dirname(reportIndexHtmlPath); // Return directory name of index.html
                 }
                 return undefined;
             })))).filter(Boolean);
-            paths.sort((a, b) => Number(a) - Number(b));
             if (paths.length >= inputs.keep) {
+                paths = await this.sortPathsByModifiedTime(paths);
                 const pathsToDelete = paths.slice(0, paths.length - inputs.keep);
                 await Promise.all(pathsToDelete.map((pathToDelete) => limit(async () => {
-                    await fs.promises.rm(path.posix.join(this.workspace, pathToDelete), { recursive: true, force: true });
+                    await fs.promises.rm(pathToDelete, { recursive: true, force: true });
                     info(`Old Report deleted from '${pathToDelete}'`);
                 })));
                 await this.git.add("-u");
@@ -136,10 +136,14 @@ export class GithubPagesService {
             console.warn("Failed to delete old reports:", e);
         }
     }
-    /** Checks if a string is a positive integer */
-    isPositiveInteger(str) {
-        const num = Number(str);
-        return Number.isInteger(num) && num > 0;
+    async sortPathsByModifiedTime(paths) {
+        const limit = pLimit(5);
+        const fileStats = await Promise.all(paths.map((file) => limit(async () => {
+            const stats = await fs.promises.stat(file);
+            return { file, mtimeMs: stats.mtimeMs };
+        })));
+        fileStats.sort((a, b) => a.mtimeMs - b.mtimeMs);
+        return fileStats.map((item) => item.file);
     }
     /** Recursively retrieves all file paths from a directory */
     async getFilePathsFromDir(dir) {
