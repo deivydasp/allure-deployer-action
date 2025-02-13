@@ -44,7 +44,7 @@ export class GithubPagesService implements GithubPagesInterface {
         this.git = simpleGit({baseDir: workspace});
         this.token = token;
         this.workspace = workspace;
-        this.subFolder = github.context.runNumber.toString()
+        this.subFolder = github.context.runId.toString()
     }
 
     async deployPages(): Promise<void> {

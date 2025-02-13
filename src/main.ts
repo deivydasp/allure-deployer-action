@@ -39,7 +39,7 @@ export function main() {
     (async () => {
         const runtimeDir = path.posix.join(os.tmpdir(), 'allure-report-deployer');
         const gitWorkspace = path.posix.join(runtimeDir, 'report')
-        const reportDir = path.posix.join(gitWorkspace, github.context.runNumber.toString());
+        const reportDir = path.posix.join(gitWorkspace, github.context.runId.toString());
         await mkdir(reportDir, {recursive: true, mode: 0o755});
         const storageRequired: boolean = inputs.show_history || inputs.retries > 0
         const args: ArgsInterface = {
