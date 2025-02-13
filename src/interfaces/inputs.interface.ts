@@ -15,7 +15,8 @@ export interface Inputs{
     pr_comment: boolean;
     report_dir?: string;
     language: string;
-    keep: number
+    keep: number;
+    gh_artifact_prefix: string;
 }
 export interface GithubConfig {
     token: string;

@@ -14,8 +14,8 @@ function getInput(name, required = false) {
 function getBooleanInput(name, required = false) {
     return core.getBooleanInput(name, { required });
 }
-function getInputOrUndefined(name, required = false) {
-    const data = core.getInput(name, { required });
+function getInputOrUndefined(name) {
+    const data = core.getInput(name);
     if (data === '') {
         return undefined;
     }
@@ -41,5 +41,9 @@ const inputs = {
     slack_channel: getInput('slack_channel'),
     slack_token: getInput('slack_token'),
     keep: getInput('keep'),
+    gh_artifact_prefix: replaceWhiteSpace(getInput('gh_artifact_prefix')),
 };
+function replaceWhiteSpace(s, replaceValue = '-') {
+    return s.replace(/\s+/g, replaceValue);
+}
 export default inputs;
