@@ -80,7 +80,7 @@ async function executeDeployment(args) {
     }
 }
 function getFirebaseHost({ firebaseProjectId, REPORTS_DIR }) {
-    return new FirebaseHost(new FirebaseService(firebaseProjectId, REPORTS_DIR));
+    return new FirebaseHost(new FirebaseService(firebaseProjectId, REPORTS_DIR), inputs.keep);
 }
 function getGitHubHost({ token, reportDir, gitWorkspace }) {
     const branch = inputs.github_pages_branch;

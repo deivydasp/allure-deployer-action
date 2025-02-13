@@ -192,6 +192,7 @@ jobs:
 | `github_pages_branch`     | Branch used for GitHub Pages deployments.                                                                                            | `gh-pages`          | No        |
 | `github_pages_repo`       | GitHub repository to deploy GitHub pages. Example owner/repository-nam                                                               | `github.repository` | No        |
 | `gcs_bucket_prefix`       | Path prefix for archived files in the GCP storage bucket when target is `firebase` .                                                 | None                | No        |
+| `keep`                    | Number of test reports you want to keep alive.                                                                                       | `10`                | No        |
 
 
 

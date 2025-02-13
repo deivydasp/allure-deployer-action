@@ -104,7 +104,7 @@ function getFirebaseHost({firebaseProjectId, REPORTS_DIR}: {
     firebaseProjectId: string;
     REPORTS_DIR: string;
 }): FirebaseHost {
-    return new FirebaseHost(new FirebaseService(firebaseProjectId, REPORTS_DIR));
+    return new FirebaseHost(new FirebaseService(firebaseProjectId, REPORTS_DIR), inputs.keep);
 }
 
 function getGitHubHost({
