@@ -37,8 +37,8 @@ on:
           - ru
           - fr
           - de
-      subfolder:
-        description: 'GitHub sub directory'
+      prefix:
+        description: 'GitHub artifact prefix'
         default: 'local-action'
       branch:
         description: 'GitHub pages deployment branch'
@@ -61,6 +61,7 @@ jobs:
         with:
           target: 'github'
           github_pages_branch: ${{github.event.inputs.branch}}
+          gh_artifact_prefix: ${{github.event.inputs.prefix || github.repository_id}}
           allure_results_path: 'allure-results'
           show_history: ${{github.event.inputs.show-history}}
           retries: ${{github.event.inputs.retries}}
