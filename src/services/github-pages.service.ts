@@ -64,7 +64,7 @@ export class GithubPagesService implements GithubPagesInterface {
 
         const [reportFiles] = await Promise.all([
             this.getFilePathsFromDir(this.reportDir),
-            this.createRedirectPage(this.pageUrl!)
+            this.createRedirectPage(normalizeUrl(`${this.pageUrl!}/${this.subFolder}`))
         ]);
 
         if (reportFiles.length === 0) {
@@ -155,10 +155,10 @@ export class GithubPagesService implements GithubPagesInterface {
         }
     }
 
-    private async createRedirectPage(url: string): Promise<void> {
+    private async createRedirectPage(redirectUrl: string): Promise<void> {
         const htmlContent = `<!DOCTYPE html>
 <meta charset="utf-8">
-<meta http-equiv="refresh" content="0; URL=${normalizeUrl(`${url}/index.html`)}">
+<meta http-equiv="refresh" content="0; URL=${normalizeUrl(`${redirectUrl}/index.html`)}">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">`;
 
