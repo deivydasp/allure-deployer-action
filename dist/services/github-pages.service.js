@@ -43,10 +43,12 @@ export class GithubPagesService {
         if (!isRepo) {
             throw new Error("No repository found. Call setupBranch() to initialize.");
         }
-        await Promise.all([
-            this.deleteOldReports(),
-            this.createRedirectPage(normalizeUrl(`${this.pageUrl}/${this.subFolder}`))
-        ]);
+        // await Promise.all([
+        //     this.deleteOldReports(),
+        //     this.createRedirectPage(normalizeUrl(`${this.pageUrl}/${this.subFolder}`))
+        // ])
+        await this.deleteOldReports();
+        await this.createRedirectPage(normalizeUrl(`${this.pageUrl}/${this.subFolder}`));
     }
     /** Initializes and sets up the branch for GitHub Pages deployment */
     async setupBranch() {
