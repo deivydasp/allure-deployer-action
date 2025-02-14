@@ -15,7 +15,7 @@ export class ArtifactService {
     }
     async hasArtifactReadPermission() {
         try {
-            await this.getFiles({ matchGlob: 'last-history', maxResults: 1 });
+            await this.getFiles({ maxResults: 1 });
             return true;
         }
         catch (e) {

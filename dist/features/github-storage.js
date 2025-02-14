@@ -1,4 +1,4 @@
-import { isFileTypeAllure, Order } from "allure-deployer-shared";
+import { Order } from "allure-deployer-shared";
 import path from "node:path";
 import fs from "fs/promises";
 import pLimit from "p-limit";
@@ -31,13 +31,8 @@ export class GithubStorage {
             fsSync.createReadStream(zipFilePath)
                 .pipe(unzipper.Parse())
                 .on("entry", async (entry) => {
-                const fullPath = path.join(outputDir, entry.path);
-                if (isFileTypeAllure(entry.path)) {
-                    entry.pipe(fsSync.createWriteStream(fullPath));
-                }
-                else {
-                    entry.autodrain();
-                }
+                const fullPath = path.posix.join(outputDir, entry.path);
+                entry.pipe(fsSync.createWriteStream(fullPath));
             })
                 .on("close", () => resolve(true))
                 .on("error", (err) => {
@@ -48,10 +43,16 @@ export class GithubStorage {
     }
     async uploadArtifacts() {
         try {
-            await Promise.allSettled([
+            const [resultsResponse, historyResponse] = await Promise.allSettled([
                 this.uploadNewResults(),
                 this.uploadHistory(),
             ]);
+            if (resultsResponse.status == "rejected") {
+                console.warn("Results artifact creation failed: ", resultsResponse.reason);
+            }
+            if (historyResponse.status == "rejected") {
+                console.warn("History artifact creation failed: ", historyResponse.reason);
+            }
         }
         catch (error) {
             console.warn("Error uploading artifacts:", error);
@@ -175,6 +176,7 @@ export class GithubStorage {
         }
         else {
             resultPath = path.join(os.tmpdir(), 'allure-deployer-results-temp');
+            // Copy result files from multiple result directories to a temporary directory for upload
             await this.copyResultFiles({ from: this.args.RESULTS_PATHS, to: resultPath });
         }
         await this.provider.upload(resultPath, this.RESULTS_ARCHIVE_NAME);

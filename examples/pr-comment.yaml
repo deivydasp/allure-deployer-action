@@ -1,0 +1,22 @@
+on:
+  pull_request:
+jobs:
+  allure-pr:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+      pull-requests: write # For when `pr_comment` is `true`
+      issues: write # For when `pr_comment` is `true`
+    steps:
+      - uses: actions/checkout@v4.1.5
+      - name: Run test
+        run: #Run test and create allure results
+      - name: Deploy Reports to GitHub pages on Pull Request
+        uses: cybersokari/allure-deployer-action@v1.8.0
+        with:
+          pr_comment: 'true'
+          target: 'github'
+          allure_results_path: 'allure-results'
+          show_history: 'true'
+          retries: 5

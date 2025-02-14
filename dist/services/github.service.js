@@ -17,7 +17,7 @@ export class GitHubService {
                 issue_number: prNumber,
                 body: message,
             });
-            console.log(`Pull Request #${prNumber} updated successfully!`);
+            core.info(`Pull Request comment posted on PR #${prNumber}!`);
         }
         catch (e) {
             console.warn('Failed to update PR:', e);

@@ -13,20 +13,20 @@ runs:
 
 inputs:
   google_credentials_json:
-    description: "Set Firebase (Google Cloud) credentials for History, Retries and Firebase Hosting"
+    description: "Firebase (Google Cloud) credentials when 'target' is 'firebase'"
     required: false
   gcs_bucket:
-    description: "Google Cloud/Firebase storage bucket to backup Allure History and Retries"
+    description: "Firebase (Google Cloud) storage bucket to backup Allure History and Retries when 'target' is 'firebase'"
     required: false
   gcs_bucket_prefix:
-    description: "Google Cloud/Firebase storage bucket path prefix to back up Allure results and history"
-    required: false
+    description: "Firebase (Google Cloud) Storage bucket prefix for 'History and Retries'. Used to separate History and Retries in multi projects when 'target' is 'firebase'"
+    default: '${{ github.repository_id }}'
   gh_artifact_prefix:
-    description: "Github artifacts prefix for 'History and Retries'. Used to separate History and Retries in multi projects"
-    default: ${{ github.repository_id }}
+    description: "Github artifacts prefix for 'History and Retries'. Used to separate History and Retries in multi projects when 'target' is 'github'"
+    default: '${{ github.repository_id }}'
   report_name:
     description: "Title of your report"
-    default: "Allure Report"
+    required: false
   target:
     description: "Deployment target: firebase or github"
     required: true
@@ -52,7 +52,7 @@ inputs:
     description: "A custom directory to generate Allure report into."
     required: false
   github_token:
-    description: "Generated GITHUB_TOKEN or Personal Access Token for deploying report to GitHub pages and pr_comment"
+    description: "Auto-generated GITHUB_TOKEN or Personal Access Token for deploying report to GitHub pages and posting report info on pr_comment"
     default: '${{ github.token }}'
   github_pages_branch:
     description: "Target branch for Deploying to GitHub Pages. Default: gh-pages"
@@ -61,8 +61,8 @@ inputs:
     description: "Allure report language"
     default: 'en'
   github_pages_repo:
-    description: "GitHub repository to deploy GitHub pages. Example owner/repo"
-    default: ${{ github.repository }}
+    description: "Another GitHub owner/repo to deploy GitHub pages. Ensure that 'github_token' provided has permissions to the repository"
+    default: '${{ github.repository }}'
   keep:
     description: "Number of test reports you want to keep alive"
     default: '10'

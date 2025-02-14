@@ -1,0 +1,17 @@
+jobs:
+  aggregate-allure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.1.5
+      - name: Run test in project
+        run: # Run test and create allure results directory
+      - name: Deploy Report, notify Slack
+        uses: cybersokari/allure-deployer-action@v1.8.0
+        with:
+          allure_results_path: 'allure-results'
+          target: 'github'
+          github_pages_repo: 'another-owner/another-repo'
+          github_pages_branch: 'gh-pages'
+          github_token: ${{ secrets.TOKEN_WITH_PERMISSION_TO_ANOTHER_REPO }}
+          show_history: 'true'
+          retries: 5

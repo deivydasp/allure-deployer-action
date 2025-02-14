@@ -53,7 +53,7 @@ export class ArtifactService implements StorageProvider {
 
     async hasArtifactReadPermission(): Promise<boolean> {
         try {
-            await this.getFiles({matchGlob: 'last-history', maxResults: 1})
+            await this.getFiles({maxResults: 1})
             return true
         }catch (e) {
             return false;

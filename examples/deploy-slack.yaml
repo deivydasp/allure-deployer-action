@@ -1,0 +1,20 @@
+jobs:
+  aggregate-allure:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - uses: actions/checkout@v4.1.5
+      - name: Run test in project
+        run: # Run test and create allure results directory
+      - name: Deploy Report, notify Slack
+        uses: cybersokari/allure-deployer-action@v1.8.0
+        with:
+          target: 'github'
+          github_pages_branch: 'gh-pages'
+          allure_results_path: 'allure-results'
+          show_history: 'true'
+          retries: 5
+          slack_channel: ${{ secrets.SLACK_CHANNEL }}
+          slack_token: ${{ secrets.SLACK_TOKEN }}

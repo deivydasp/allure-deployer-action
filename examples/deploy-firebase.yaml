@@ -1,0 +1,16 @@
+jobs:
+  firebase:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.1.5
+      - name: Run test
+        run: #Run test and create allure results
+      - name: Deploy Reports to Firebase with History and Retries
+        uses: cybersokari/allure-deployer-action@v1.8.0
+        with:
+          target: 'firebase'
+          allure_results_path: 'allure-results'
+          google_credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+          gcs_bucket: ${{vars.STORAGE_BUCKET}}
+          show_history: 'true'
+          retries: 5
