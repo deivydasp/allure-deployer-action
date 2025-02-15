@@ -12,8 +12,8 @@ export class GithubStorage {
     constructor(provider, args) {
         this.provider = provider;
         this.args = args;
-        this.HISTORY_ARCHIVE_NAME = `${inputs.prefix}-last-history`;
-        this.RESULTS_ARCHIVE_NAME = `${inputs.prefix}-allure-results`;
+        this.HISTORY_ARCHIVE_NAME = inputs.prefix ? `${inputs.prefix}-last-history` : 'last-history';
+        this.RESULTS_ARCHIVE_NAME = inputs.prefix ? `${inputs.prefix}-allure-results` : 'allure-results';
     }
     async stageFilesFromStorage() {
         await this.createStagingDirectories();

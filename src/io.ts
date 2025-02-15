@@ -45,7 +45,6 @@ const inputs : Inputs & DefaultConfig = {
     github_pages_branch: getInputOrUndefined('github_pages_branch'),
     github_pages_repo: getInput('github_pages_repo'),
     gcs_bucket: getInputOrUndefined('gcs_bucket'),
-    gcs_bucket_prefix: getInputOrUndefined('gcs_bucket_prefix') ? replaceWhiteSpace(getInput('gcs_bucket_prefix')!) : undefined,
     google_credentials_json: getInputOrUndefined('google_credentials_json'),
     pr_comment: getBooleanInput('pr_comment'),
     slack_channel: getInput('slack_channel'),
@@ -56,15 +55,14 @@ const inputs : Inputs & DefaultConfig = {
     fileProcessingConcurrency: 10,
     RESULTS_STAGING_PATH: path.posix.join(runtimeDir(), "allure-results"),
     ARCHIVE_DIR: path.posix.join(runtimeDir(), "archive"),
-    GIT_WORKSPACE: workspace(),
-    REPORTS_DIR: path.posix.join(workspace(), prefix()),
+    WORKSPACE: workspace(),
 };
 
 function replaceWhiteSpace(s: string, replaceValue = '-'): string {
     return s.replace(/\s+/g, replaceValue)
 }
 
-function prefix(): string{
+function prefix(): string | undefined {
     let prefix
     switch (getTarget()){
         case 'github':{
@@ -74,10 +72,10 @@ function prefix(): string{
             prefix = core.getInput('gcs_bucket_prefix')
         }
     }
-    if(!prefix){
-        prefix = getInput('prefix')
+    if(!prefix){ // if empty string
+        prefix = getInputOrUndefined('prefix')
     }
-    return replaceWhiteSpace(prefix);
+    return  prefix ? replaceWhiteSpace(prefix) : undefined;
 }
 
 function workspace(): string{

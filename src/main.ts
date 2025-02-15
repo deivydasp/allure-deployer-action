@@ -31,6 +31,8 @@ import {GithubStorage, GithubStorageConfig} from "./features/github-storage.js";
 import {mkdir} from "fs/promises"
 import inputs from "./io.js";
 import normalizeUrl from "normalize-url";
+import path from "node:path";
+import {RequestError} from "@octokit/request-error";
 
 export function main() {
     (async () => await executeDeployment())();
@@ -38,7 +40,7 @@ export function main() {
 
 async function executeDeployment() {
     try {
-        await mkdir(inputs.REPORTS_DIR, {recursive: true, mode: 0o755});
+        let reportDir
         let host: HostingProvider
         if (inputs.target === 'firebase') {
             const credentials = inputs.google_credentials_json;
@@ -47,31 +49,58 @@ async function executeDeployment() {
                 process.exit(1);
             }
             let firebaseProjectId = (await setGoogleCredentialsEnv(credentials)).project_id;
-            host = getFirebaseHost({firebaseProjectId, REPORTS_DIR: inputs.REPORTS_DIR});
+            reportDir = inputs.WORKSPACE
+            host = getFirebaseHost({firebaseProjectId, REPORTS_DIR: reportDir});
         } else {
             const token = inputs.github_token;
             if (!token) {// Check for empty string
                 error("Github Pages require a valid 'github_token'");
                 process.exit(1);
             }
+
+            const [owner, repo] = inputs.github_pages_repo!.split('/')
+            const response = await github.getOctokit(token).rest.repos.getPages({
+                owner,
+                repo
+            }).catch((e) => {
+                if (e instanceof RequestError) {
+                    error(e.message);
+                } else {
+                    console.error(e);
+                }
+                process.exit(1);
+            });
+
+            if (response.data.build_type !== "legacy" || response.data.source?.branch !== inputs.github_pages_branch) {
+                error(`GitHub Pages must be set to deploy from '${inputs.github_pages_branch}' branch.`);
+                process.exit(1);
+            }
+            // remove first '/' from the GitHub pages source directory
+            const pagesSourcePath = response.data.source!.path.replace('/', '')
+
+            //
+            const reportSubDir = path.posix.join(pagesSourcePath, inputs.prefix ?? '', github.context.runId.toString())
+            reportDir = path.posix.join(inputs.WORKSPACE, reportSubDir)
+            const pageUrl = normalizeUrl(`${response.data.html_url!}/${reportSubDir}`)
             host = getGitHubHost({
-                token,
-                reportDir: inputs.REPORTS_DIR,
-                workspace: inputs.GIT_WORKSPACE
+                token, pageUrl,
+                reportDir, pagesSourcePath,
+                workspace: inputs.WORKSPACE
             });
         }
+        await mkdir(reportDir, {recursive: true, mode: 0o755});
 
         const storageRequired: boolean = inputs.show_history || inputs.retries > 0
-        const storage = storageRequired ? await initializeStorage() : undefined
+        const storage = storageRequired ? await initializeStorage(reportDir) : undefined
         const [reportUrl] = await stageDeployment({host, storage});
         const config: AllureConfig = {
             RESULTS_STAGING_PATH: inputs.RESULTS_STAGING_PATH,
-            REPORTS_DIR: inputs.REPORTS_DIR,
+            REPORTS_DIR: reportDir,
             reportLanguage: inputs.language
         }
         const allure = new Allure({config});
         await generateAllureReport({allure, reportUrl});
-        const [resultsStats] = await finalizeDeployment({host, storage});
+        const [resultsStats] = await finalizeDeployment({host, storage, reportDir});
         await sendNotifications(resultsStats, reportUrl, allure.environments);
     } catch (error) {
         console.error("Deployment failed:", error);
@@ -88,11 +117,13 @@ function getFirebaseHost({firebaseProjectId, REPORTS_DIR}: {
 
 function getGitHubHost({
                            token,
-                           reportDir, workspace
+                           reportDir, workspace, pageUrl, pagesSourcePath
                        }: {
     token: string;
     reportDir: string;
     workspace: string;
+    pageUrl: string;
+    pagesSourcePath: string;
 }): GithubHost {
     const branch = inputs.github_pages_branch!;
     const [owner, repo] = inputs.github_pages_repo!.split('/')
@@ -101,17 +132,17 @@ function getGitHubHost({
         repo,
         workspace,
         token, branch,
-        reportDir
+        reportDir, pageUrl, pagesSourcePath
     }
     return new GithubHost(new GithubPagesService(config));
 }
 
-async function initializeStorage(): Promise<IStorage | undefined> {
+async function initializeStorage(reportDir: string): Promise<IStorage | undefined> {
     const RESULTS_PATHS = await validateResultsPaths(inputs.allure_results_path)
     const storageConfig: GoogleStorageConfig | GithubStorageConfig = {
         ARCHIVE_DIR: inputs.ARCHIVE_DIR,
         RESULTS_PATHS,
-        REPORTS_DIR: inputs.REPORTS_DIR,
+        REPORTS_DIR: reportDir,
         RESULTS_STAGING_PATH: inputs.RESULTS_STAGING_PATH,
         fileProcessingConcurrency: inputs.fileProcessingConcurrency,
         showHistory: inputs.show_history,
@@ -163,7 +194,7 @@ async function getCloudStorageService({storageBucket, googleCredentialData}: {
             info(`GCP storage bucket '${bucket.name}' does not exist. History and Retries will be disabled.`);
             return undefined;
         }
-        return new GoogleStorageService(bucket, inputs.gcs_bucket_prefix)
+        return new GoogleStorageService(bucket, inputs.prefix)
     } catch (error) {
         handleStorageError(error);
         return undefined;
@@ -222,15 +253,15 @@ function createGitHubBuildUrl(): string {
     return normalizeUrl(`${github.context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`);
 }
 
-async function finalizeDeployment({storage, host}: {
-    storage?: IStorage, host: HostingProvider
+async function finalizeDeployment({storage, host, reportDir}: {
+    storage?: IStorage, host: HostingProvider, reportDir: string
 }) {
     info("Finalizing deployment...");
     const result: [ReportStatistic, any, void, void] = await Promise.all([
-        getReportStats(inputs.REPORTS_DIR),
+        getReportStats(reportDir),
         host.deploy(),
         storage?.uploadArtifacts(),
-        copyReportToCustomDir(inputs.REPORTS_DIR),
+        copyReportToCustomDir(reportDir),
     ]);
     info("Deployment finalized.");
     return result;

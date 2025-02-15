@@ -20,7 +20,7 @@ inputs:
     required: false
   prefix:
     description: "Prefix to uniquely identify test report artifacts when managing multiple projects. "
-    default: '${{ github.repository_id }}'
+    required: false
   gcs_bucket_prefix:
     description: "Prefix to uniquely identify test report artifacts when managing multiple projects."
     required: false

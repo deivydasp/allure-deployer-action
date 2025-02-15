@@ -4,7 +4,6 @@ export interface Inputs{
     github_pages_branch?: string;
     github_pages_repo: string;
     gcs_bucket?: string;
-    gcs_bucket_prefix?: string;
     target: 'firebase' | 'github';
     report_name?: string
     slack_channel: string
@@ -16,15 +15,14 @@ export interface Inputs{
     custom_report_dir?: string;
     language: string;
     keep: number;
-    prefix: string;
+    prefix?: string;
 }
 export interface DefaultConfig {
     runtimeCredentialDir: string,
     fileProcessingConcurrency: 10,
     RESULTS_STAGING_PATH: string,
     ARCHIVE_DIR: string,
-    REPORTS_DIR: string,
-    GIT_WORKSPACE: string
+    WORKSPACE: string
 }
 export interface FirebaseConfig {
     credentials_json: string;
