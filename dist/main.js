@@ -57,7 +57,8 @@ async function executeDeployment() {
             }
             // remove first '/' from the GitHub pages source directory
             const pagesSourcePath = response.data.source.path.replace('/', '');
-            //
+            // reportDir with prefix == workspace/page-source-path/prefix/run-id
+            // reportDir without a prefix == workspace/page-source-path/run-id
             const reportSubDir = path.posix.join(pagesSourcePath, inputs.prefix ?? '', github.context.runId.toString());
             reportDir = path.posix.join(inputs.WORKSPACE, reportSubDir);
             const pageUrl = normalizeUrl(`${response.data.html_url}/${reportSubDir}`);

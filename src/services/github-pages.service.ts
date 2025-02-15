@@ -132,8 +132,8 @@ export class GithubPagesService implements GithubPagesInterface {
     /** Deletes old Allure reports, keeping the latest `inputs.keep` */
     private async deleteOldReports(): Promise<void> {
         try {
-            const dir = path.posix.join(inputs.WORKSPACE, this.pagesSourcePath ?? '', inputs.prefix ?? '')
-            const entries: Dirent[] = await fs.promises.readdir(dir, {withFileTypes: true});
+            const parentDIr = path.posix.dirname(this.reportDir)
+            const entries: Dirent[] = await fs.promises.readdir(parentDIr, {withFileTypes: true});
             const limit = pLimit(10);
             let paths = (
                 await Promise.all(
@@ -149,7 +149,7 @@ export class GithubPagesService implements GithubPagesInterface {
                 )
             ).filter(Boolean) as string[];
 
-            if (paths.length >= inputs.keep) {
+            if (paths.length > 1 && paths.length >= inputs.keep) {
                 paths = await this.sortPathsByModifiedTime(paths)
                 const pathsToDelete = paths.slice(0, paths.length - inputs.keep);
                 await Promise.all(

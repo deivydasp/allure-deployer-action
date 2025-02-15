@@ -88,8 +88,8 @@ export class GithubPagesService {
     /** Deletes old Allure reports, keeping the latest `inputs.keep` */
     async deleteOldReports() {
         try {
-            const dir = path.posix.join(inputs.WORKSPACE, this.pagesSourcePath ?? '', inputs.prefix ?? '');
-            const entries = await fs.promises.readdir(dir, { withFileTypes: true });
+            const parentDIr = path.posix.dirname(this.reportDir);
+            const entries = await fs.promises.readdir(parentDIr, { withFileTypes: true });
             const limit = pLimit(10);
             let paths = (await Promise.all(entries.map((entry) => limit(async () => {
                 const reportIndexHtmlPath = path.posix.join(entry.parentPath, entry.name, 'index.html');
@@ -98,7 +98,7 @@ export class GithubPagesService {
                 }
                 return undefined;
             })))).filter(Boolean);
-            if (paths.length >= inputs.keep) {
+            if (paths.length > 1 && paths.length >= inputs.keep) {
                 paths = await this.sortPathsByModifiedTime(paths);
                 const pathsToDelete = paths.slice(0, paths.length - inputs.keep);
                 await Promise.all(pathsToDelete.map((pathToDelete) => limit(async () => {
