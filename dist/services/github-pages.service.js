@@ -6,7 +6,6 @@ import pLimit from "p-limit";
 import core, { info } from "@actions/core";
 import normalizeUrl from "normalize-url";
 import inputs from "../io.js";
-import { mkdir } from "fs/promises";
 export class GithubPagesService {
     constructor(config) {
         this.branch = config.branch;
@@ -14,7 +13,7 @@ export class GithubPagesService {
         this.repo = config.repo;
         this.reportDir = config.reportDir;
         this.token = config.token;
-        this.git = simpleGit({ baseDir: inputs.WORKSPACE });
+        this.git = simpleGit();
         this.pageUrl = config.pageUrl;
         this.pagesSourcePath = config.pagesSourcePath;
     }
@@ -52,7 +51,7 @@ export class GithubPagesService {
     }
     /** Initializes and sets up the branch for GitHub Pages deployment */
     async setupBranch() {
-        await mkdir(inputs.WORKSPACE, { recursive: true });
+        await this.git.cwd(inputs.WORKSPACE);
         await this.git.init();
         const headers = {
             Authorization: `Basic ${Buffer.from(`x-access-token:${this.token}`).toString("base64")}`,

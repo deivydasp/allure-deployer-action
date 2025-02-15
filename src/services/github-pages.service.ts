@@ -7,7 +7,6 @@ import core, {info} from "@actions/core";
 import normalizeUrl from "normalize-url";
 import inputs from "../io.js";
 import {GithubPagesInterface} from "../interfaces/github-pages.interface.js";
-import {mkdir} from "fs/promises";
 
 export type GitHubConfig = {
     owner: string;
@@ -36,7 +35,7 @@ export class GithubPagesService implements GithubPagesInterface {
         this.repo = config.repo;
         this.reportDir = config.reportDir;
         this.token = config.token;
-        this.git = simpleGit({baseDir: inputs.WORKSPACE});
+        this.git = simpleGit();
         this.pageUrl = config.pageUrl;
         this.pagesSourcePath = config.pagesSourcePath;
     }
@@ -81,7 +80,7 @@ export class GithubPagesService implements GithubPagesInterface {
 
     /** Initializes and sets up the branch for GitHub Pages deployment */
     async setupBranch(): Promise<string> {
-        await mkdir(inputs.WORKSPACE, { recursive: true });
+        await this.git.cwd(inputs.WORKSPACE)
         await this.git.init();
 
         const headers = {
