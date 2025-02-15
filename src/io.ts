@@ -37,7 +37,7 @@ const inputs : Inputs & DefaultConfig = {
     target: getTarget(),
     language: getInput('language'),
     report_name: getInputOrUndefined('report_name'),
-    custom_report_dir: getInputOrUndefined('custom_report_dir'),
+    custom_report_dir: core.getInput('report_dir') || getInputOrUndefined('custom_report_dir'),
     allure_results_path: getInput('allure_results_path', true),
     retries : getInput('retries'),
     show_history: getBooleanInput('show_history'),
@@ -65,7 +65,19 @@ function replaceWhiteSpace(s: string, replaceValue = '-'): string {
 }
 
 function prefix(): string{
-    return path.posix.join(replaceWhiteSpace(getInput('prefix')));
+    let prefix
+    switch (getTarget()){
+        case 'github':{
+            prefix = core.getInput('gh_artifact_prefix')
+        } break
+        case "firebase": {
+            prefix = core.getInput('gcs_bucket_prefix')
+        }
+    }
+    if(!prefix){
+        prefix = getInput('prefix')
+    }
+    return replaceWhiteSpace(prefix);
 }
 
 function workspace(): string{

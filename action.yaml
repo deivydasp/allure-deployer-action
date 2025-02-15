@@ -19,15 +19,15 @@ inputs:
     description: "Firebase (Google Cloud) storage bucket to backup Allure History and Retries when 'target' is 'firebase'"
     required: false
   prefix:
-    description: "Github artifacts prefix for 'History and Retries'. Used to separate History and Retries in multi projects when 'target' is 'github'"
+    description: "Prefix to uniquely identify test report artifacts when managing multiple projects. "
     default: '${{ github.repository_id }}'
   gcs_bucket_prefix:
-    description: "Firebase (Google Cloud) Storage bucket prefix for 'History and Retries'. Used to separate History and Retries in multi projects when 'target' is 'firebase'"
-    default: '${{ inputs.prefix }}'
+    description: "Prefix to uniquely identify test report artifacts when managing multiple projects."
+    required: false
     deprecation_message: "Use 'prefix' instead"
   gh_artifact_prefix:
-    description: "Github artifacts prefix for 'History and Retries'. Used to separate History and Retries in multi projects when 'target' is 'github'"
-    default: '${{ inputs.prefix }}'
+    description: "Prefix to uniquely identify test report artifacts when managing multiple projects."
+    required: false
     deprecation_message: "Use 'prefix' instead"
   report_name:
     description: "Title of your report"
@@ -59,7 +59,7 @@ inputs:
     deprecation_message: "Use 'custom_report_dir' instead"
   custom_report_dir:
     description: "A custom directory to generate Allure report into."
-    default: ${{ inputs.report_dir }}
+    required: false
   github_token:
     description: "Auto-generated GITHUB_TOKEN or Personal Access Token for deploying report to GitHub pages and posting report info on pr_comment"
     default: '${{ github.token }}'
