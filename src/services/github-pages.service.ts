@@ -7,6 +7,7 @@ import core, {info} from "@actions/core";
 import normalizeUrl from "normalize-url";
 import inputs from "../io.js";
 import {GithubPagesInterface} from "../interfaces/github-pages.interface.js";
+import {mkdir} from "fs/promises";
 
 export type GitHubConfig = {
     owner: string;
@@ -80,6 +81,7 @@ export class GithubPagesService implements GithubPagesInterface {
 
     /** Initializes and sets up the branch for GitHub Pages deployment */
     async setupBranch(): Promise<string> {
+        await mkdir(inputs.WORKSPACE, { recursive: true });
         await this.git.init();
 
         const headers = {

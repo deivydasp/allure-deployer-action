@@ -88,6 +88,7 @@ async function executeDeployment() {
                 workspace: inputs.WORKSPACE
             });
         }
+        info(`Creating report directory at: ${reportDir}`);
         await mkdir(reportDir, {recursive: true, mode: 0o755});
 
         const storageRequired: boolean = inputs.show_history || inputs.retries > 0
