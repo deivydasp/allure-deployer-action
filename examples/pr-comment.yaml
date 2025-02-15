@@ -13,7 +13,7 @@ jobs:
       - name: Run test
         run: #Run test and create allure results
       - name: Deploy Reports to GitHub pages on Pull Request
-        uses: cybersokari/allure-deployer-action@v1.8.0
+        uses: cybersokari/allure-deployer-action@v1.9.1
         with:
           pr_comment: 'true'
           target: 'github'

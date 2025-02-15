@@ -19,8 +19,8 @@ export class GithubStorage implements IStorage {
     private readonly RESULTS_ARCHIVE_NAME: string
 
     constructor(private readonly provider: ArtifactService, readonly args: GithubStorageConfig) {
-        this.HISTORY_ARCHIVE_NAME = `${inputs.gh_artifact_prefix}-last-history`;
-        this.RESULTS_ARCHIVE_NAME = `${inputs.gh_artifact_prefix}-allure-results`;
+        this.HISTORY_ARCHIVE_NAME = `${inputs.prefix}-last-history`;
+        this.RESULTS_ARCHIVE_NAME = `${inputs.prefix}-allure-results`;
     }
 
     async stageFilesFromStorage(): Promise<void> {

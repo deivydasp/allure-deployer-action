@@ -107,26 +107,25 @@ Pull request comment [example](https://github.com/cybersokari/allure-deployer-ac
 
 ## Configuration Options (Inputs)
 
-| Name                      | Description                                                                                                                                        | Default Value          | Required? |
-|---------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------|------------------------|-----------|
-| `allure_results_path`     | Path(s) to Allure results. Separate multiple paths with commas.                                                                                    | `allure-results`       | Yes       |
-| `target`                  | Deployment target: `firebase` or `github`.                                                                                                         | None                   | Yes       |
-| `google_credentials_json` | Firebase credentials to enable **History**, **Retries**, and **Firebase Hosting**.                                                                 | None                   | No        |
-| `github_token`            | GitHub token or personal access token to enable GitHub pages hosting and `pr_comment`                                                              | `github.token`         | No        |
-| `report_name`             | Custom name/title for the report.                                                                                                                  | None                   | No        |
-| `language`                | Allure report language                                                                                                                             | `en`                   | No        |
-| `gcs_bucket`              | Google Cloud Storage bucket name for **History** and **Retries** when target is `firebase`.                                                        | None                   | No        |
-| `show_history`            | Display history from previous runs.                                                                                                                | `true`                 | No        |
-| `retries`                 | Number of previous runs to display as retries.                                                                                                     | 0                      | No        |
-| `report_dir`              | Directory to generate the Allure report in.                                                                                                        | None                   | No        |
-| `slack_channel`           | Slack channel ID for report notifications.                                                                                                         | None                   | No        |
-| `slack_token`             | Slack app token for sending notifications.                                                                                                         | None                   | No        |
-| `pr_comment`              | Post report information as a pull request comment. Requires GitHub token with `pull_requests: write` and `issues: write` permissions               | `true`                 | No        |
-| `github_pages_branch`     | Branch used for GitHub Pages deployments.                                                                                                          | `gh-pages`             | No        |
-| `github_pages_repo`       | GitHub repository to deploy GitHub pages. Example owner/repository-nam                                                                             | `github.repository`    | No        |
-| `gcs_bucket_prefix`       | Google Cloud Storage bucket prefix for 'History and Retries'. Used to separate History and Retries in multi projects when `target` is `firebase` . | None                   | No        |
-| `gh_artifact_prefix`      | Github artifacts prefix for 'History and Retries'. Used to separate History and Retries in multi projects when `target` is `github`                | `github.repository_id` | No        |
-| `keep`                    | Number of test reports you want to keep alive.                                                                                                     | `10`                   | No        |
+| Name                      | Description                                                                                                                          | Default Value       | Required? |
+|---------------------------|--------------------------------------------------------------------------------------------------------------------------------------|---------------------|-----------|
+| `allure_results_path`     | Path(s) to Allure results. Separate multiple paths with commas.                                                                      | `allure-results`    | Yes       |
+| `target`                  | Deployment target: `firebase` or `github`.                                                                                           | None                | Yes       |
+| `google_credentials_json` | Firebase credentials to enable **History**, **Retries**, and **Firebase Hosting**.                                                   | None                | No        |
+| `github_token`            | GitHub token or personal access token to enable GitHub pages hosting and `pr_comment`                                                | `github.token`      | No        |
+| `report_name`             | Custom name/title for the report.                                                                                                    | None                | No        |
+| `language`                | Allure report language                                                                                                               | `en`                | No        |
+| `gcs_bucket`              | Google Cloud Storage bucket name for **History** and **Retries** when target is `firebase`.                                          | None                | No        |
+| `show_history`            | Display history from previous runs.                                                                                                  | `true`              | No        |
+| `retries`                 | Number of previous runs to display as retries.                                                                                       | 0                   | No        |
+| `custom_report_dir`       | Directory to generate the Allure report in, if you want to use test report in subsequent steps.                                      | None                | No        |
+| `slack_channel`           | Slack channel ID for report notifications.                                                                                           | None                | No        |
+| `slack_token`             | Slack app token for sending notifications.                                                                                           | None                | No        |
+| `pr_comment`              | Post report information as a pull request comment. Requires GitHub token with `pull_requests: write` and `issues: write` permissions | `true`              | No        |
+| `github_pages_branch`     | Branch used for GitHub Pages deployments.                                                                                            | `gh-pages`          | No        |
+| `github_pages_repo`       | GitHub repository to deploy GitHub pages. Example owner/repository-nam                                                               | `github.repository` | No        |
+| `prefix`                  | Prefix to uniquely identify test report artifacts when managing multiple projects.                                                   | None                | No        |
+| `keep`                    | Number of test reports you want to keep alive.                                                                                       | `10`                | No        |
 
 
 

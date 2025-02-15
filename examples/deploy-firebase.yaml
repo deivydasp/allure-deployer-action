@@ -6,7 +6,7 @@ jobs:
       - name: Run test
         run: #Run test and create allure results
       - name: Deploy Reports to Firebase with History and Retries
-        uses: cybersokari/allure-deployer-action@v1.8.0
+        uses: cybersokari/allure-deployer-action@v1.9.1
         with:
           target: 'firebase'
           allure_results_path: 'allure-results'

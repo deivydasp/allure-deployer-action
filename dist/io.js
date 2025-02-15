@@ -1,5 +1,7 @@
 import core from "@actions/core";
 import process from "node:process";
+import path from "node:path";
+import os from "node:os";
 function getTarget() {
     const target = getInput("target", true).toLowerCase();
     if (target != 'firebase' && target != 'github') {
@@ -27,7 +29,7 @@ const inputs = {
     target: getTarget(),
     language: getInput('language'),
     report_name: getInputOrUndefined('report_name'),
-    report_dir: getInputOrUndefined('report_dir'),
+    custom_report_dir: getInputOrUndefined('custom_report_dir'),
     allure_results_path: getInput('allure_results_path', true),
     retries: getInput('retries'),
     show_history: getBooleanInput('show_history'),
@@ -41,9 +43,24 @@ const inputs = {
     slack_channel: getInput('slack_channel'),
     slack_token: getInput('slack_token'),
     keep: getInput('keep'),
-    gh_artifact_prefix: replaceWhiteSpace(getInput('gh_artifact_prefix')),
+    prefix: prefix(),
+    runtimeCredentialDir: path.posix.join(runtimeDir(), "credentials/key.json"),
+    fileProcessingConcurrency: 10,
+    RESULTS_STAGING_PATH: path.posix.join(runtimeDir(), "allure-results"),
+    ARCHIVE_DIR: path.posix.join(runtimeDir(), "archive"),
+    GIT_WORKSPACE: workspace(),
+    REPORTS_DIR: path.posix.join(workspace(), prefix()),
 };
 function replaceWhiteSpace(s, replaceValue = '-') {
     return s.replace(/\s+/g, replaceValue);
+}
+function prefix() {
+    return path.posix.join(replaceWhiteSpace(getInput('prefix')));
+}
+function workspace() {
+    return path.posix.join(runtimeDir(), 'report');
+}
+function runtimeDir() {
+    return path.posix.join(os.tmpdir(), 'allure-report-deployer');
 }
 export default inputs;

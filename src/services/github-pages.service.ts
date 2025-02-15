@@ -37,7 +37,7 @@ export class GithubPagesService implements GithubPagesInterface {
         this.workspace = config.workspace;
         this.token = config.token;
         this.git = simpleGit({baseDir: this.workspace});
-        this.subFolder = github.context.runId.toString();
+        this.subFolder = inputs.prefix;
     }
 
     /** Deploys the Allure report to GitHub Pages */

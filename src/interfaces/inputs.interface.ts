@@ -13,22 +13,21 @@ export interface Inputs{
     retries: number;
     show_history: boolean;
     pr_comment: boolean;
-    report_dir?: string;
+    custom_report_dir?: string;
     language: string;
     keep: number;
-    gh_artifact_prefix: string;
+    prefix: string;
 }
-export interface GithubConfig {
-    token: string;
-    branch: string;
-    subFolder: string;
-    owner: string;
-    repo: string;
-    prComment: boolean;
-    prNumber?: number;
+export interface DefaultConfig {
+    runtimeCredentialDir: string,
+    fileProcessingConcurrency: 10,
+    RESULTS_STAGING_PATH: string,
+    ARCHIVE_DIR: string,
+    REPORTS_DIR: string,
+    GIT_WORKSPACE: string
 }
 export interface FirebaseConfig {
-    credentialsJson: string;
-    bucket: string;
+    credentials_json: string;
+    gcs_bucket: string;
 }
 export type input = keyof Inputs

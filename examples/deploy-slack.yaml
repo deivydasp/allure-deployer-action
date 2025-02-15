@@ -9,7 +9,7 @@ jobs:
       - name: Run test in project
         run: # Run test and create allure results directory
       - name: Deploy Report, notify Slack
-        uses: cybersokari/allure-deployer-action@v1.8.0
+        uses: cybersokari/allure-deployer-action@v1.9.1
         with:
           target: 'github'
           github_pages_branch: 'gh-pages'

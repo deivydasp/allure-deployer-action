@@ -1,5 +1,4 @@
 import * as process from "node:process";
-import path from "node:path";
 import { Allure, ConsoleNotifier, copyFiles, FirebaseHost, FirebaseService, getReportStats, GoogleStorage, GoogleStorageService, NotifyHandler, SlackNotifier, SlackService, validateResultsPaths, } from "allure-deployer-shared";
 import { Storage as GCPStorage } from "@google-cloud/storage";
 import { GitHubService } from "./services/github.service.js";
@@ -14,35 +13,21 @@ import { GithubStorage } from "./features/github-storage.js";
 import { mkdir } from "fs/promises";
 import inputs from "./io.js";
 import normalizeUrl from "normalize-url";
-import * as os from "node:os";
 export function main() {
-    (async () => {
-        const runtimeDir = path.posix.join(os.tmpdir(), 'allure-report-deployer');
-        const gitWorkspace = path.posix.join(runtimeDir, 'report');
-        const reportDir = path.posix.join(gitWorkspace, github.context.runId.toString());
-        await mkdir(reportDir, { recursive: true, mode: 0o755 });
-        const storageRequired = inputs.show_history || inputs.retries > 0;
-        const args = {
-            downloadRequired: storageRequired,
-            uploadRequired: storageRequired,
-            runtimeCredentialDir: path.posix.join(runtimeDir, "credentials/key.json"),
-            fileProcessingConcurrency: 10,
-            RESULTS_PATHS: await validateResultsPaths(inputs.allure_results_path),
-            RESULTS_STAGING_PATH: path.posix.join(runtimeDir, "allure-results"),
-            ARCHIVE_DIR: path.posix.join(runtimeDir, "archive"),
-            REPORTS_DIR: reportDir,
-            retries: inputs.retries,
-            showHistory: inputs.show_history,
-        };
+    (async () => await executeDeployment())();
+}
+async function executeDeployment() {
+    try {
+        await mkdir(inputs.REPORTS_DIR, { recursive: true, mode: 0o755 });
+        let host;
         if (inputs.target === 'firebase') {
             const credentials = inputs.google_credentials_json;
             if (!credentials) {
-                error("Firebase Hosting require a valid 'google_credentials_json'.");
+                error("Firebase Hosting require a valid 'google_credentials_json'");
                 process.exit(1);
             }
             let firebaseProjectId = (await setGoogleCredentialsEnv(credentials)).project_id;
-            args.firebaseProjectId = firebaseProjectId;
-            args.host = getFirebaseHost({ firebaseProjectId, REPORTS_DIR: reportDir });
+            host = getFirebaseHost({ firebaseProjectId, REPORTS_DIR: inputs.REPORTS_DIR });
         }
         else {
             const token = inputs.github_token;
@@ -50,28 +35,23 @@ export function main() {
                 error("Github Pages require a valid 'github_token'");
                 process.exit(1);
             }
-            args.host = getGitHubHost({
+            host = getGitHubHost({
                 token,
-                reportDir,
-                gitWorkspace
+                reportDir: inputs.REPORTS_DIR,
+                workspace: inputs.GIT_WORKSPACE
             });
         }
-        await executeDeployment(args);
-    })();
-}
-async function executeDeployment(args) {
-    try {
         const storageRequired = inputs.show_history || inputs.retries > 0;
-        const storage = storageRequired ? await initializeStorage(args) : undefined;
-        const [reportUrl] = await stageDeployment(args, storage);
+        const storage = storageRequired ? await initializeStorage() : undefined;
+        const [reportUrl] = await stageDeployment({ host, storage });
         const config = {
-            RESULTS_STAGING_PATH: args.RESULTS_STAGING_PATH,
-            REPORTS_DIR: args.REPORTS_DIR,
+            RESULTS_STAGING_PATH: inputs.RESULTS_STAGING_PATH,
+            REPORTS_DIR: inputs.REPORTS_DIR,
             reportLanguage: inputs.language
         };
         const allure = new Allure({ config });
         await generateAllureReport({ allure, reportUrl });
-        const [resultsStats] = await finalizeDeployment({ args, storage });
+        const [resultsStats] = await finalizeDeployment({ host, storage });
         await sendNotifications(resultsStats, reportUrl, allure.environments);
     }
     catch (error) {
@@ -82,25 +62,26 @@ async function executeDeployment(args) {
 function getFirebaseHost({ firebaseProjectId, REPORTS_DIR }) {
     return new FirebaseHost(new FirebaseService(firebaseProjectId, REPORTS_DIR), inputs.keep);
 }
-function getGitHubHost({ token, reportDir, gitWorkspace }) {
+function getGitHubHost({ token, reportDir, workspace }) {
     const branch = inputs.github_pages_branch;
     const [owner, repo] = inputs.github_pages_repo.split('/');
     const config = {
         owner,
         repo,
-        workspace: gitWorkspace,
+        workspace,
         token, branch,
         reportDir
     };
     return new GithubHost(new GithubPagesService(config));
 }
-async function initializeStorage(args) {
+async function initializeStorage() {
+    const RESULTS_PATHS = await validateResultsPaths(inputs.allure_results_path);
     const storageConfig = {
-        ARCHIVE_DIR: args.ARCHIVE_DIR,
-        RESULTS_PATHS: args.RESULTS_PATHS,
-        REPORTS_DIR: args.REPORTS_DIR,
-        RESULTS_STAGING_PATH: args.RESULTS_STAGING_PATH,
-        fileProcessingConcurrency: args.fileProcessingConcurrency,
+        ARCHIVE_DIR: inputs.ARCHIVE_DIR,
+        RESULTS_PATHS,
+        REPORTS_DIR: inputs.REPORTS_DIR,
+        RESULTS_STAGING_PATH: inputs.RESULTS_STAGING_PATH,
+        fileProcessingConcurrency: inputs.fileProcessingConcurrency,
         showHistory: inputs.show_history,
         retries: inputs.retries,
         clean: false,
@@ -154,17 +135,18 @@ async function getCloudStorageService({ storageBucket, googleCredentialData }) {
         return undefined;
     }
 }
-async function stageDeployment(args, storage) {
+async function stageDeployment({ storage, host }) {
     info("Staging files...");
+    const RESULTS_PATHS = await validateResultsPaths(inputs.allure_results_path);
     const copyResultsFiles = copyFiles({
-        from: args.RESULTS_PATHS,
-        to: args.RESULTS_STAGING_PATH,
-        concurrency: args.fileProcessingConcurrency,
+        from: RESULTS_PATHS,
+        to: inputs.RESULTS_STAGING_PATH,
+        concurrency: inputs.fileProcessingConcurrency,
     });
     const result = await Promise.all([
-        args.host?.init(),
+        host.init(),
         copyResultsFiles,
-        args.downloadRequired ? storage?.stageFilesFromStorage() : undefined,
+        inputs.show_history || inputs.retries > 0 ? storage?.stageFilesFromStorage() : undefined,
     ]);
     info("Files staged successfully.");
     return result;
@@ -192,22 +174,21 @@ function createGitHubBuildUrl() {
     const { context } = github;
     return normalizeUrl(`${github.context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`);
 }
-async function finalizeDeployment({ args, storage, }) {
+async function finalizeDeployment({ storage, host }) {
     info("Finalizing deployment...");
     const result = await Promise.all([
-        getReportStats(args.REPORTS_DIR),
-        args.host?.deploy(),
+        getReportStats(inputs.REPORTS_DIR),
+        host.deploy(),
         storage?.uploadArtifacts(),
-        copyReportToCustomDir(args.REPORTS_DIR),
+        copyReportToCustomDir(inputs.REPORTS_DIR),
     ]);
     info("Deployment finalized.");
     return result;
 }
 async function copyReportToCustomDir(reportDir) {
-    const reportOutputPath = inputs.report_dir;
-    if (reportOutputPath) {
+    if (inputs.custom_report_dir) {
         try {
-            await copyDirectory(reportDir, reportOutputPath);
+            await copyDirectory(reportDir, inputs.custom_report_dir);
         }
         catch (e) {
             console.error(e);

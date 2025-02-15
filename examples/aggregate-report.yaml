@@ -6,7 +6,7 @@ jobs:
       - name: Run test in multi-module project
         run: # Run test and create multiple allure results directories
       - name: Deploy Reports
-        uses: cybersokari/allure-deployer-action@v1.8.0
+        uses: cybersokari/allure-deployer-action@v1.9.1
         with:
           target: 'firebase'
           allure_results_path: 'allure-results_1,allure-results_2,allure-results_3'
