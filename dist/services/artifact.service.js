@@ -75,9 +75,9 @@ export class ArtifactService {
                             method: 'GET'
                         };
                         https.get(requestOptions, (response) => {
-                            if (response.statusCode !== 302) {
-                                reject(`Failed to get '${artifactUrl}' (${response.statusCode}) ${response.statusMessage}`);
-                            }
+                            // if (response.statusCode !== 302) {
+                            //     reject(`Failed to get '${artifactUrl}' (${response.statusCode}) ${response.statusMessage}`);
+                            // }
                             response.pipe(fileStream);
                             fileStream.on('finish', () => {
                                 warning(`Url ${artifactUrl} download complete!`);
