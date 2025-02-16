@@ -7,7 +7,7 @@ import * as os from "node:os";
 import fsSync from "fs";
 import unzipper, {Entry} from "unzipper";
 import {RequestError} from "@octokit/request-error";
-import core, {warning} from "@actions/core";
+import core from "@actions/core";
 import inputs from "../io.js";
 
 
@@ -124,7 +124,6 @@ export class GithubStorage implements IStorage {
             destination: this.args.ARCHIVE_DIR,
         });
         if(downloadedPaths.length > 0){
-            warning(`Unzipping ${downloadedPaths[0]}`)
             const stagingDir = path.join(this.args.RESULTS_STAGING_PATH, "history");
             await fs.mkdir(stagingDir, {recursive: true});
             tasks.push(this.unzipToStaging(downloadedPaths[0], stagingDir));
