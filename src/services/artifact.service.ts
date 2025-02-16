@@ -111,7 +111,17 @@ export class ArtifactService implements StorageProvider {
                         reject(urlResponse)
                     } else {
                         const artifactUrl = urlResponse.headers.location!
-                        https.get(artifactUrl, (response) => {
+
+                        const options = new URL(artifactUrl);
+                        const requestOptions = {
+                            hostname: options.hostname,
+                            path: options.pathname + options.search,
+                            headers: {
+                                'User-Agent': 'node.js'
+                            },
+                            method: 'GET'
+                        };
+                        https.get(requestOptions, (response) => {
                             if (response.statusCode !== 200) {
                                 reject(`Failed to get '${artifactUrl}' (${response.statusCode}) ${response.statusMessage}`);
                             }
