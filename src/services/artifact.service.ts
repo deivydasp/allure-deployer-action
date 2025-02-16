@@ -1,7 +1,7 @@
 import {Order, StorageProvider} from "allure-deployer-shared";
 import {DefaultArtifactClient} from '@actions/artifact'
 import pLimit from "p-limit";
-import {DEFAULT_RETRY_CONFIG, getAbsoluteFilePaths, withRetry} from "../utilities/util.js";
+import {DEFAULT_RETRY_CONFIG, allFulfilledResults, getAbsoluteFilePaths, withRetry} from "../utilities/util.js";
 import {Octokit} from "@octokit/rest";
 import https from 'https';
 import fs from "fs";
@@ -107,16 +107,7 @@ export class ArtifactService implements StorageProvider {
                 });
             }))
         }
-        let results = (await Promise.allSettled(promises))
-            .map((result) => {
-            if (result.status == 'fulfilled') {
-                return result.value
-            } else {
-                console.warn(result.reason)
-                return undefined
-            }
-        })
-        return results.filter(Boolean) as string[];
+        return await allFulfilledResults(promises)
     }
 
     async getFiles({matchGlob, order = Order.byOldestToNewest, maxResults, endOffset}: {
@@ -136,7 +127,7 @@ export class ArtifactService implements StorageProvider {
                 }
             })
         }
-        const response =  await withRetry(operation, DEFAULT_RETRY_CONFIG)
+        const response = await withRetry(operation, DEFAULT_RETRY_CONFIG)
         const files = response.data.artifacts.filter(file => file.created_at && !file.expired);
         return this.sortFiles(files, order)
     }

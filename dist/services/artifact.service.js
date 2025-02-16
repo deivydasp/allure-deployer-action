@@ -1,7 +1,7 @@
 import { Order } from "allure-deployer-shared";
 import { DefaultArtifactClient } from '@actions/artifact';
 import pLimit from "p-limit";
-import { DEFAULT_RETRY_CONFIG, getAbsoluteFilePaths, withRetry } from "../utilities/util.js";
+import { DEFAULT_RETRY_CONFIG, allFulfilledResults, getAbsoluteFilePaths, withRetry } from "../utilities/util.js";
 import { Octokit } from "@octokit/rest";
 import https from 'https';
 import fs from "fs";
@@ -62,17 +62,7 @@ export class ArtifactService {
                 });
             }));
         }
-        let results = (await Promise.allSettled(promises))
-            .map((result) => {
-            if (result.status == 'fulfilled') {
-                return result.value;
-            }
-            else {
-                console.warn(result.reason);
-                return undefined;
-            }
-        });
-        return results.filter(Boolean);
+        return await allFulfilledResults(promises);
     }
     async getFiles({ matchGlob, order = Order.byOldestToNewest, maxResults, endOffset }) {
         const operation = async () => {
