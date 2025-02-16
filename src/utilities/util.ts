@@ -187,7 +187,6 @@ export async function copyDirectory(sourceDir: string, destDir: string): Promise
 
 export async function allFulfilledResults<T>(promises: Promise<T>[]): Promise<T[]> {
     const results = await Promise.allSettled(promises);
-
     return results
         .filter((result): result is PromiseFulfilledResult<Awaited<T>> => {
             if (result.status === 'rejected') {
@@ -197,5 +196,9 @@ export async function allFulfilledResults<T>(promises: Promise<T>[]): Promise<T[
             return true;
         })
         .map(result => result.value);
+}
+
+export function removeTrailingSlash(p: string) {
+    return p.endsWith(path.sep) && p.length > 1 ? p.slice(0, -1) : p;
 }
 

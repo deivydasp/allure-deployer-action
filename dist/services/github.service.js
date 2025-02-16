@@ -1,5 +1,6 @@
 import github from "@actions/github";
 import core from "@actions/core";
+import { DEFAULT_RETRY_CONFIG, withRetry } from "../utilities/util.js";
 export class GitHubService {
     async updateOutput({ name, value }) {
         try {
@@ -11,12 +12,15 @@ export class GitHubService {
     async updatePr({ message, token, prNumber }) {
         try {
             // Update the PR body
-            await github.getOctokit(token).rest.issues.createComment({
-                owner: github.context.repo.owner,
-                repo: github.context.repo.repo,
-                issue_number: prNumber,
-                body: message,
-            });
+            const work = async () => {
+                await github.getOctokit(token).rest.issues.createComment({
+                    owner: github.context.repo.owner,
+                    repo: github.context.repo.repo,
+                    issue_number: prNumber,
+                    body: message,
+                });
+            };
+            await withRetry(work, DEFAULT_RETRY_CONFIG);
             core.info(`Pull Request comment posted on PR #${prNumber}!`);
         }
         catch (e) {

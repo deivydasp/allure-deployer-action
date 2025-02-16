@@ -140,3 +140,6 @@ export async function allFulfilledResults(promises) {
     })
         .map(result => result.value);
 }
+export function removeTrailingSlash(p) {
+    return p.endsWith(path.sep) && p.length > 1 ? p.slice(0, -1) : p;
+}

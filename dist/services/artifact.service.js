@@ -82,7 +82,7 @@ export class ArtifactService {
         }
         return await allFulfilledResults(promises);
     }
-    async getFiles({ matchGlob, order = Order.byOldestToNewest, maxResults, endOffset }) {
+    async getFiles({ matchGlob, order = Order.byOldestToNewest, maxResults }) {
         const operation = async () => {
             return await this.octokit.request('GET /repos/{owner}/{repo}/actions/artifacts', {
                 owner: this.owner,
@@ -110,6 +110,7 @@ export class ArtifactService {
     }
     async upload(filePath, destination) {
         const files = getAbsoluteFilePaths(filePath);
-        await this.artifactClient.uploadArtifact(destination, files, filePath);
+        const work = async () => await this.artifactClient.uploadArtifact(destination, files, filePath);
+        await withRetry(work, DEFAULT_RETRY_CONFIG);
     }
 }

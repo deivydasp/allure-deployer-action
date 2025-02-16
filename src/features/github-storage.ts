@@ -9,6 +9,7 @@ import unzipper, {Entry} from "unzipper";
 import {RequestError} from "@octokit/request-error";
 import core from "@actions/core";
 import inputs from "../io.js";
+import {allFulfilledResults} from "../utilities/util.js";
 
 
 export interface GithubStorageConfig extends GoogleStorageConfig {
@@ -20,7 +21,7 @@ export class GithubStorage implements IStorage {
 
     constructor(private readonly provider: ArtifactService, readonly args: GithubStorageConfig) {
         this.HISTORY_ARCHIVE_NAME = inputs.prefix ? `${inputs.prefix}-last-history` : 'last-history';
-        this.RESULTS_ARCHIVE_NAME = inputs.prefix ? `${inputs.prefix}-allure-results`: 'allure-results';
+        this.RESULTS_ARCHIVE_NAME = inputs.prefix ? `${inputs.prefix}-allure-results` : 'allure-results';
     }
 
     async stageFilesFromStorage(): Promise<void> {
@@ -32,7 +33,7 @@ export class GithubStorage implements IStorage {
         if (this.args.retries) {
             tasks.push(this.stageResultFiles(this.args.retries));
         }
-        await Promise.all(tasks);
+        await allFulfilledResults(tasks);
     }
 
     unzipToStaging(zipFilePath: string, outputDir: string): Promise<boolean> {
@@ -52,20 +53,10 @@ export class GithubStorage implements IStorage {
     }
 
     async uploadArtifacts(): Promise<void> {
-        try {
-            const [resultsResponse, historyResponse] = await Promise.allSettled([
-                this.uploadNewResults(),
-                this.uploadHistory(),
-            ]);
-            if(resultsResponse.status == "rejected"){
-                console.warn("Results artifact creation failed: ",resultsResponse.reason)
-            }
-            if(historyResponse.status == "rejected"){
-                console.warn("History artifact creation failed: ",historyResponse.reason)
-            }
-        } catch (error) {
-            console.warn("Error uploading artifacts:", error);
-        }
+        await allFulfilledResults([
+            this.uploadNewResults(),
+            this.uploadHistory(),
+        ]);
     }
 
     // ============= Private Helper Methods =============
@@ -74,15 +65,10 @@ export class GithubStorage implements IStorage {
      * Ensures the local directories exist.
      */
     private async createStagingDirectories(): Promise<void> {
-        try {
-            await Promise.allSettled([
-                fs.mkdir(this.args.ARCHIVE_DIR, {recursive: true}),
-                fs.mkdir(this.args.RESULTS_STAGING_PATH, {recursive: true})
-            ])
-        } catch (error) {
-            console.error("Error creating archive directory:", error);
-            throw error;
-        }
+        await allFulfilledResults([
+            fs.mkdir(this.args.ARCHIVE_DIR, {recursive: true}),
+            fs.mkdir(this.args.RESULTS_STAGING_PATH, {recursive: true})
+        ])
     }
 
     /**
@@ -123,12 +109,12 @@ export class GithubStorage implements IStorage {
             files: [files[0]],
             destination: this.args.ARCHIVE_DIR,
         });
-        if(downloadedPaths.length > 0){
+        if (downloadedPaths.length > 0) {
             const stagingDir = path.join(this.args.RESULTS_STAGING_PATH, "history");
             await fs.mkdir(stagingDir, {recursive: true});
             tasks.push(this.unzipToStaging(downloadedPaths[0], stagingDir));
         }
-        await Promise.all(tasks);
+        await allFulfilledResults(tasks);
     }
 
     /**
@@ -139,7 +125,7 @@ export class GithubStorage implements IStorage {
         let files = await this.provider.getFiles({
             order: Order.byOldestToNewest,
             matchGlob: this.RESULTS_ARCHIVE_NAME,
-            maxResults: this.args.retries
+            maxResults: retries
         });
         if (files.length === 0) return
 

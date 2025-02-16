@@ -8,6 +8,7 @@ import unzipper from "unzipper";
 import { RequestError } from "@octokit/request-error";
 import core from "@actions/core";
 import inputs from "../io.js";
+import { allFulfilledResults } from "../utilities/util.js";
 export class GithubStorage {
     constructor(provider, args) {
         this.provider = provider;
@@ -24,7 +25,7 @@ export class GithubStorage {
         if (this.args.retries) {
             tasks.push(this.stageResultFiles(this.args.retries));
         }
-        await Promise.all(tasks);
+        await allFulfilledResults(tasks);
     }
     unzipToStaging(zipFilePath, outputDir) {
         return new Promise((resolve, reject) => {
@@ -42,37 +43,20 @@ export class GithubStorage {
         });
     }
     async uploadArtifacts() {
-        try {
-            const [resultsResponse, historyResponse] = await Promise.allSettled([
-                this.uploadNewResults(),
-                this.uploadHistory(),
-            ]);
-            if (resultsResponse.status == "rejected") {
-                console.warn("Results artifact creation failed: ", resultsResponse.reason);
-            }
-            if (historyResponse.status == "rejected") {
-                console.warn("History artifact creation failed: ", historyResponse.reason);
-            }
-        }
-        catch (error) {
-            console.warn("Error uploading artifacts:", error);
-        }
+        await allFulfilledResults([
+            this.uploadNewResults(),
+            this.uploadHistory(),
+        ]);
     }
     // ============= Private Helper Methods =============
     /**
      * Ensures the local directories exist.
      */
     async createStagingDirectories() {
-        try {
-            await Promise.allSettled([
-                fs.mkdir(this.args.ARCHIVE_DIR, { recursive: true }),
-                fs.mkdir(this.args.RESULTS_STAGING_PATH, { recursive: true })
-            ]);
-        }
-        catch (error) {
-            console.error("Error creating archive directory:", error);
-            throw error;
-        }
+        await allFulfilledResults([
+            fs.mkdir(this.args.ARCHIVE_DIR, { recursive: true }),
+            fs.mkdir(this.args.RESULTS_STAGING_PATH, { recursive: true })
+        ]);
     }
     /**
      * Downloads and stages the history archive.
@@ -116,7 +100,7 @@ export class GithubStorage {
             await fs.mkdir(stagingDir, { recursive: true });
             tasks.push(this.unzipToStaging(downloadedPaths[0], stagingDir));
         }
-        await Promise.all(tasks);
+        await allFulfilledResults(tasks);
     }
     /**
      * Stages the result files and deletes older files exceeding the retry limit.
@@ -126,7 +110,7 @@ export class GithubStorage {
         let files = await this.provider.getFiles({
             order: Order.byOldestToNewest,
             matchGlob: this.RESULTS_ARCHIVE_NAME,
-            maxResults: this.args.retries
+            maxResults: retries
         });
         if (files.length === 0)
             return;

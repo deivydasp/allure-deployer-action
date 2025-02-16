@@ -129,11 +129,10 @@ export class ArtifactService implements StorageProvider {
         return await allFulfilledResults(promises)
     }
 
-    async getFiles({matchGlob, order = Order.byOldestToNewest, maxResults, endOffset}: {
+    async getFiles({matchGlob, order = Order.byOldestToNewest, maxResults}: {
         matchGlob?: string;
         order?: Order;
         maxResults?: number;
-        endOffset?: string
     }): Promise<ArtifactResponse[]> {
         const operation = async () => {
             return await this.octokit.request('GET /repos/{owner}/{repo}/actions/artifacts', {
@@ -164,7 +163,8 @@ export class ArtifactService implements StorageProvider {
 
     async upload(filePath: string, destination: string): Promise<void> {
         const files = getAbsoluteFilePaths(filePath)
-        await this.artifactClient.uploadArtifact(destination, files, filePath)
+        const work = async () => await this.artifactClient.uploadArtifact(destination, files, filePath)
+        await withRetry(work, DEFAULT_RETRY_CONFIG)
     }
 
 }
