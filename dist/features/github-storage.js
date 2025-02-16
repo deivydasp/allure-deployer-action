@@ -107,13 +107,15 @@ export class GithubStorage {
                 }));
             }
         }
-        const [downloadedPath] = await this.provider.download({
+        const downloadedPaths = await this.provider.download({
             files: [files[0]],
             destination: this.args.ARCHIVE_DIR,
         });
         const stagingDir = path.join(this.args.RESULTS_STAGING_PATH, "history");
         await fs.mkdir(stagingDir, { recursive: true });
-        tasks.push(this.unzipToStaging(downloadedPath, stagingDir));
+        if (downloadedPaths.length > 0) {
+            tasks.push(this.unzipToStaging(downloadedPaths[0], stagingDir));
+        }
         await Promise.all(tasks);
     }
     /**
