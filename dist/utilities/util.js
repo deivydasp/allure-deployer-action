@@ -128,3 +128,18 @@ export async function copyDirectory(sourceDir, destDir) {
     }
     console.log(`Copied directory from ${sourceDir} to ${destDir}`);
 }
+export async function allFulfilledResults(promises) {
+    const results = await Promise.allSettled(promises);
+    return results
+        .filter((result) => {
+        if (result.status === 'rejected') {
+            console.warn(result.reason);
+            return false;
+        }
+        return true;
+    })
+        .map(result => result.value);
+}
+export function removeTrailingSlash(p) {
+    return p.endsWith(path.sep) && p.length > 1 ? p.slice(0, -1) : p;
+}
