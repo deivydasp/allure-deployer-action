@@ -24,11 +24,11 @@ inputs:
   gcs_bucket_prefix:
     description: "Prefix to uniquely identify test report artifacts when managing multiple projects."
     required: false
-    deprecation_message: "Use 'prefix' instead"
+    deprecationMessage: "Use 'prefix' instead. "
   gh_artifact_prefix:
     description: "Prefix to uniquely identify test report artifacts when managing multiple projects."
     required: false
-    deprecation_message: "Use 'prefix' instead"
+    deprecationMessage: "Use 'prefix' instead. "
   report_name:
     description: "Title of your report"
     required: false
@@ -56,7 +56,7 @@ inputs:
   report_dir:
     description: "A custom directory to generate Allure report into."
     required: false
-    deprecation_message: "Use 'custom_report_dir' instead"
+    deprecationMessage: "Use 'custom_report_dir' instead. "
   custom_report_dir:
     description: "A custom directory to generate Allure report into."
     required: false

@@ -34,6 +34,9 @@ on:
         description: "Send slack message"
         type: boolean
         default: false
+      prefix:
+        description: 'GCS bucket prefix'
+        default: 'local-action'
 jobs:
   firebase:
     runs-on: ${{ github.event.inputs.runner }}
@@ -50,6 +53,6 @@ jobs:
           slack_token: ${{github.event.inputs.slack == true && secrets.SLACK_TOKEN || ''}}
           show_history: ${{github.event.inputs.show-history}}
           retries: ${{github.event.inputs.retries}}
-          gcs_bucket_prefix: 'test-action-firebase'
+          gcs_bucket_prefix: ${{github.event.inputs.prefix || ''}}
           report_name: ${{github.event.inputs.report-name}}
           language: ${{github.event.inputs.report-lang}}
