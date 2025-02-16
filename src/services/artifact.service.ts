@@ -122,7 +122,7 @@ export class ArtifactService implements StorageProvider {
                             method: 'GET'
                         };
                         https.get(requestOptions, (response) => {
-                            if (response.statusCode !== 200) {
+                            if (response.statusCode !== 302) {
                                 reject(`Failed to get '${artifactUrl}' (${response.statusCode}) ${response.statusMessage}`);
                             }
                             response.pipe(fileStream);
