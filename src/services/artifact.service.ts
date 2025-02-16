@@ -1,12 +1,11 @@
 import {Order, StorageProvider} from "allure-deployer-shared";
 import {DefaultArtifactClient} from '@actions/artifact'
 import pLimit from "p-limit";
-import {getAbsoluteFilePaths} from "../utilities/util.js";
+import {DEFAULT_RETRY_CONFIG, getAbsoluteFilePaths, withRetry} from "../utilities/util.js";
 import {Octokit} from "@octokit/rest";
 import https from 'https';
 import fs from "fs";
 import path from "node:path";
-
 
 export interface WorkflowRun {
     id?: number;
@@ -55,27 +54,30 @@ export class ArtifactService implements StorageProvider {
         try {
             await this.getFiles({maxResults: 1})
             return true
-        }catch (e) {
+        } catch (e) {
             return false;
         }
     }
 
     async deleteFile(id: number): Promise<void> {
-        await this.octokit.request('DELETE /repos/{owner}/{repo}/actions/artifacts/{artifact_id}', {
-            owner: this.owner,
-            repo: this.repo,
-            artifact_id: id,
-            headers: {
-                'X-GitHub-Api-Version': '2022-11-28'
-            }
-        })
+        const operation = async () => {
+            return await this.octokit.request('DELETE /repos/{owner}/{repo}/actions/artifacts/{artifact_id}', {
+                owner: this.owner,
+                repo: this.repo,
+                artifact_id: id,
+                headers: {
+                    'X-GitHub-Api-Version': '2022-11-28'
+                }
+            })
+        }
+        await withRetry(operation, DEFAULT_RETRY_CONFIG);
     }
 
     deleteFiles(matchGlob?: string): Promise<void> {
         throw new Error('Not implemented');
     }
 
-    async download({destination, concurrency = 10, files}: {
+    async download({destination, concurrency = 5, files}: {
         destination: string;
         concurrency?: number;
         files: ArtifactResponse[]
@@ -86,23 +88,13 @@ export class ArtifactService implements StorageProvider {
         for (const file of files) {
             promises.push(limit(async (): Promise<string> => {
 
-                const {url} = await this.octokit.request('GET /repos/{owner}/{repo}/actions/artifacts/{artifact_id}/{archive_format}', {
-                    owner: this.owner,
-                    repo: this.repo,
-                    artifact_id: file.id,
-                    archive_format: 'zip',
-                    headers: {
-                        'X-GitHub-Api-Version': '2022-11-28'
-                    }
-                })
-                const artifactUrl = url;
+                const artifactUrl = file.archive_download_url;
                 const filePath = path.join(destination, `${file.id}.zip`);
                 return new Promise((resolve, reject) => {
                     const fileStream = fs.createWriteStream(filePath);
                     https.get(artifactUrl, (response) => {
                         if (response.statusCode !== 200) {
-                            reject(new Error(`Failed to get '${artifactUrl}' (${response.statusCode})`));
-                            return;
+                            reject(`Failed to get '${artifactUrl}' (${response.statusCode})`);
                         }
                         response.pipe(fileStream);
                         fileStream.on('finish', () => {
@@ -115,7 +107,16 @@ export class ArtifactService implements StorageProvider {
                 });
             }))
         }
-        return await Promise.all(promises);
+        let results = (await Promise.allSettled(promises))
+            .map((result) => {
+            if (result.status == 'fulfilled') {
+                return result.value
+            } else {
+                console.warn(result.reason)
+                return undefined
+            }
+        })
+        return results.filter(Boolean) as string[];
     }
 
     async getFiles({matchGlob, order = Order.byOldestToNewest, maxResults, endOffset}: {
@@ -124,15 +125,18 @@ export class ArtifactService implements StorageProvider {
         maxResults?: number;
         endOffset?: string
     }): Promise<ArtifactResponse[]> {
-        const response = await this.octokit.request('GET /repos/{owner}/{repo}/actions/artifacts', {
-            owner: this.owner,
-            repo: this.repo,
-            name: matchGlob,
-            per_page: maxResults,
-            headers: {
-                'X-GitHub-Api-Version': '2022-11-28'
-            }
-        })
+        const operation = async () => {
+            return await this.octokit.request('GET /repos/{owner}/{repo}/actions/artifacts', {
+                owner: this.owner,
+                repo: this.repo,
+                name: matchGlob,
+                per_page: maxResults,
+                headers: {
+                    'X-GitHub-Api-Version': '2022-11-28'
+                }
+            })
+        }
+        const response =  await withRetry(operation, DEFAULT_RETRY_CONFIG)
         const files = response.data.artifacts.filter(file => file.created_at && !file.expired);
         return this.sortFiles(files, order)
     }
