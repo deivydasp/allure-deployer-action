@@ -64,20 +64,11 @@ export class ArtifactService {
                         reject(urlResponse);
                     }
                     else {
-                        const artifactUrl = urlResponse.headers.location;
-                        const options = new URL(artifactUrl);
-                        const requestOptions = {
-                            hostname: options.hostname,
-                            path: options.pathname + options.search,
-                            headers: {
-                                'User-Agent': 'node.js'
-                            },
-                            method: 'GET'
-                        };
-                        https.get(requestOptions, (response) => {
-                            // if (response.statusCode !== 302) {
-                            //     reject(`Failed to get '${artifactUrl}' (${response.statusCode}) ${response.statusMessage}`);
-                            // }
+                        const artifactUrl = urlResponse.url;
+                        https.get(artifactUrl, (response) => {
+                            if (response.statusCode !== 200) {
+                                reject(`Failed to get '${artifactUrl}' (${response.statusCode}) ${response.statusMessage}`);
+                            }
                             response.pipe(fileStream);
                             fileStream.on('finish', () => {
                                 warning(`Url ${artifactUrl} download complete!`);
