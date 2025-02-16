@@ -83,7 +83,7 @@ export class GithubPagesService {
         const filePath = path.posix.join(inputs.WORKSPACE, this.pagesSourcePath ?? '', 'index.html');
         await fs.promises.writeFile(filePath, htmlContent);
         await this.git.add(filePath);
-        info(`Redirect 'index.html' created at ${filePath}`);
+        info(`Redirect 'index.html' created at ${this.pagesSourcePath ?? '/'}`);
     }
     /** Deletes old Allure reports, keeping the latest `inputs.keep` */
     async deleteOldReports() {
