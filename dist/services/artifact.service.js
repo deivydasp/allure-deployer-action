@@ -12,6 +12,7 @@ export class ArtifactService {
         this.octokit = new Octokit({ auth: token });
         this.owner = owner;
         this.repo = repo;
+        this.token = token;
     }
     async hasArtifactReadPermission() {
         try {
@@ -47,9 +48,19 @@ export class ArtifactService {
                 const filePath = path.join(destination, `${file.id}.zip`);
                 return new Promise((resolve, reject) => {
                     const fileStream = fs.createWriteStream(filePath);
-                    https.get(artifactUrl, (response) => {
+                    const options = new URL(artifactUrl);
+                    const requestOptions = {
+                        hostname: options.hostname,
+                        path: options.pathname + options.search,
+                        headers: {
+                            'Authorization': `token ${this.token}`,
+                            'Accept': 'application/vnd.github.v3+json',
+                            'User-Agent': 'node.js'
+                        }
+                    };
+                    https.get(requestOptions, (response) => {
                         if (response.statusCode !== 200) {
-                            reject(`Failed to get '${artifactUrl}' (${response.statusCode})`);
+                            reject(`Failed to get '${artifactUrl}' (${response.statusCode}) ${response.statusMessage}`);
                         }
                         response.pipe(fileStream);
                         fileStream.on('finish', () => {
