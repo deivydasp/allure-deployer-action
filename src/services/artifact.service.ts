@@ -6,7 +6,6 @@ import {Octokit} from "@octokit/rest";
 import https from 'https';
 import fs from "fs";
 import path from "node:path";
-import {warning} from "@actions/core";
 
 export interface WorkflowRun {
     id?: number;
@@ -86,14 +85,12 @@ export class ArtifactService implements StorageProvider {
         files: ArtifactResponse[]
     }): Promise<string[]> {
 
-
         const limit = pLimit(concurrency);
         const promises: Promise<string>[] = [];
         for (const file of files) {
             promises.push(limit(async (): Promise<string> => {
                 const filePath = path.join(destination, `${file.id}.zip`);
                 return new Promise(async (resolve, reject) => {
-                    const fileStream = fs.createWriteStream(filePath);
 
                     const operation = async () => {
                         return await this.octokit.request('GET /repos/{owner}/{repo}/actions/artifacts/{artifact_id}/{archive_format}', {
@@ -107,7 +104,7 @@ export class ArtifactService implements StorageProvider {
                         })
                     }
                     const urlResponse = await withRetry(operation, DEFAULT_RETRY_CONFIG)
-                    if(urlResponse.status != 302){
+                    if(!urlResponse){
                         reject(urlResponse)
                     } else {
                         const artifactUrl = urlResponse.url
@@ -115,9 +112,9 @@ export class ArtifactService implements StorageProvider {
                             if (response.statusCode !== 200) {
                                 reject(`Failed to get '${artifactUrl}' (${response.statusCode}) ${response.statusMessage}`);
                             }
+                            const fileStream = fs.createWriteStream(filePath);
                             response.pipe(fileStream);
                             fileStream.on('finish', () => {
-                                warning(`Url ${artifactUrl} download complete!`)
                                 fileStream.close();
                                 resolve(filePath);
                             });

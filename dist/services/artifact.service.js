@@ -6,7 +6,6 @@ import { Octokit } from "@octokit/rest";
 import https from 'https';
 import fs from "fs";
 import path from "node:path";
-import { warning } from "@actions/core";
 export class ArtifactService {
     constructor({ token, repo, owner }) {
         this.artifactClient = new DefaultArtifactClient();
@@ -47,7 +46,6 @@ export class ArtifactService {
             promises.push(limit(async () => {
                 const filePath = path.join(destination, `${file.id}.zip`);
                 return new Promise(async (resolve, reject) => {
-                    const fileStream = fs.createWriteStream(filePath);
                     const operation = async () => {
                         return await this.octokit.request('GET /repos/{owner}/{repo}/actions/artifacts/{artifact_id}/{archive_format}', {
                             owner: this.owner,
@@ -60,7 +58,7 @@ export class ArtifactService {
                         });
                     };
                     const urlResponse = await withRetry(operation, DEFAULT_RETRY_CONFIG);
-                    if (urlResponse.status != 302) {
+                    if (!urlResponse) {
                         reject(urlResponse);
                     }
                     else {
@@ -69,9 +67,9 @@ export class ArtifactService {
                             if (response.statusCode !== 200) {
                                 reject(`Failed to get '${artifactUrl}' (${response.statusCode}) ${response.statusMessage}`);
                             }
+                            const fileStream = fs.createWriteStream(filePath);
                             response.pipe(fileStream);
                             fileStream.on('finish', () => {
-                                warning(`Url ${artifactUrl} download complete!`);
                                 fileStream.close();
                                 resolve(filePath);
                             });
