@@ -6,10 +6,11 @@ import { Octokit } from "@octokit/rest";
 import https from 'https';
 import fs from "fs";
 import path from "node:path";
+import github from "@actions/github";
 export class ArtifactService {
     constructor({ token, repo, owner }) {
         this.artifactClient = new DefaultArtifactClient();
-        this.octokit = new Octokit({ auth: token });
+        this.octokit = new Octokit({ auth: token, baseUrl: github.context.apiUrl });
         this.owner = owner;
         this.repo = repo;
         this.token = token;

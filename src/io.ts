@@ -41,7 +41,7 @@ const inputs : Inputs & DefaultConfig = {
     allure_results_path: getInput('allure_results_path', true),
     retries : getInput('retries'),
     show_history: getBooleanInput('show_history'),
-    github_token: getInput('github_token'),
+    github_token: getInput('github_token', true),
     github_pages_branch: getInputOrUndefined('github_pages_branch'),
     github_pages_repo: getInput('github_pages_repo'),
     gcs_bucket: getInputOrUndefined('gcs_bucket'),
@@ -84,5 +84,6 @@ function workspace(): string{
 function runtimeDir(): string{
     return path.posix.join(os.tmpdir(), 'allure-report-deployer');
 }
+
 
 export default inputs

@@ -6,6 +6,7 @@ import {Octokit} from "@octokit/rest";
 import https from 'https';
 import fs from "fs";
 import path from "node:path";
+import github from "@actions/github";
 
 export interface WorkflowRun {
     id?: number;
@@ -46,7 +47,7 @@ export class ArtifactService implements StorageProvider {
 
     constructor({token, repo, owner}: ArtifactServiceConfig) {
         this.artifactClient = new DefaultArtifactClient();
-        this.octokit = new Octokit({auth: token});
+        this.octokit = new Octokit({auth: token, baseUrl: github.context.apiUrl});
         this.owner = owner;
         this.repo = repo;
         this.token = token;
