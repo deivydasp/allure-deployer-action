@@ -47,36 +47,41 @@ export class ArtifactService {
             promises.push(limit(async () => {
                 const filePath = path.join(destination, `${file.id}.zip`);
                 return new Promise(async (resolve, reject) => {
-                    const operation = async () => {
-                        return await this.octokit.request('GET /repos/{owner}/{repo}/actions/artifacts/{artifact_id}/{archive_format}', {
-                            owner: this.owner,
-                            repo: this.repo,
-                            artifact_id: file.id,
-                            archive_format: 'zip',
-                            headers: {
-                                'X-GitHub-Api-Version': '2022-11-28'
-                            }
-                        });
-                    };
-                    const urlResponse = await withRetry(operation, DEFAULT_RETRY_CONFIG);
-                    if (!urlResponse) {
-                        reject(urlResponse);
-                    }
-                    else {
-                        const artifactUrl = urlResponse.url;
-                        https.get(artifactUrl, (response) => {
-                            if (response.statusCode !== 200) {
-                                reject(`Failed to get '${artifactUrl}' (${response.statusCode}) ${response.statusMessage}`);
-                            }
-                            const fileStream = fs.createWriteStream(filePath);
-                            response.pipe(fileStream);
-                            fileStream.on('finish', () => {
-                                fileStream.close();
-                                resolve(filePath);
+                    try {
+                        const operation = async () => {
+                            return await this.octokit.request('GET /repos/{owner}/{repo}/actions/artifacts/{artifact_id}/{archive_format}', {
+                                owner: this.owner,
+                                repo: this.repo,
+                                artifact_id: file.id,
+                                archive_format: 'zip',
+                                headers: {
+                                    'X-GitHub-Api-Version': '2022-11-28'
+                                }
                             });
-                        }).on('error', (err) => {
-                            fs.unlink(filePath, () => reject(err)); // Delete the file if an error occurs
-                        });
+                        };
+                        const urlResponse = await withRetry(operation, DEFAULT_RETRY_CONFIG);
+                        if (!urlResponse) {
+                            reject(urlResponse);
+                        }
+                        else {
+                            const artifactUrl = urlResponse.url;
+                            https.get(artifactUrl, (response) => {
+                                if (response.statusCode !== 200) {
+                                    reject(`Failed to get '${artifactUrl}' (${response.statusCode}) ${response.statusMessage}`);
+                                }
+                                const fileStream = fs.createWriteStream(filePath);
+                                response.pipe(fileStream);
+                                fileStream.on('finish', () => {
+                                    fileStream.close();
+                                    resolve(filePath);
+                                });
+                            }).on('error', (err) => {
+                                fs.unlink(filePath, () => reject(err)); // Delete the file if an error occurs
+                            });
+                        }
+                    }
+                    catch (e) {
+                        reject(e);
                     }
                 });
             }));
