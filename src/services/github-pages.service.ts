@@ -122,10 +122,10 @@ export class GithubPagesService implements GithubPagesInterface {
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">`;
 
-        const filePath = path.posix.join(inputs.WORKSPACE, this.pagesSourcePath ?? '', 'index.html');
+        const filePath = path.posix.join(inputs.WORKSPACE, this.pagesSourcePath ?? '', inputs.prefix ?? '', 'index.html');
         await fs.promises.writeFile(filePath, htmlContent);
         await this.git.add(filePath);
-        info(`Redirect 'index.html' created at ${this.pagesSourcePath ?? '/'}`);
+        info(`Redirect 'index.html' created at ${path.posix.join(this.pagesSourcePath || '/', inputs.prefix ?? '')}`);
     }
 
     /** Deletes old Allure reports, keeping the latest `inputs.keep` */

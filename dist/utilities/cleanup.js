@@ -1,12 +1,10 @@
 import { unlink } from 'fs/promises';
 import { GOOGLE_CREDENTIALS_PATH } from "./constants.js";
+import inputs from "../io.js";
 async function cleanupCredentials() {
-    try {
-        await unlink(GOOGLE_CREDENTIALS_PATH);
-        console.log('Credentials file cleaned up.');
-    }
-    catch (error) {
-        console.error('No credentials to cleanup');
+    if (inputs.target === 'firebase') {
+        await unlink(GOOGLE_CREDENTIALS_PATH).catch(console.error);
+        console.log('google_credentials_json file cleaned up.');
     }
 }
 await cleanupCredentials();
