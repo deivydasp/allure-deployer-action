@@ -22,7 +22,7 @@ export class GithubStorage {
         if (this.args.showHistory) {
             tasks.push(this.stageHistoryFiles());
         }
-        if (this.args.retries) {
+        if (this.args.retries > 0) {
             tasks.push(this.stageResultFiles(this.args.retries));
         }
         await allFulfilledResults(tasks);
@@ -43,10 +43,14 @@ export class GithubStorage {
         });
     }
     async uploadArtifacts() {
-        await allFulfilledResults([
-            this.uploadNewResults(),
-            this.uploadHistory(),
-        ]);
+        const promises = [];
+        if (this.args.showHistory) {
+            promises.push(this.uploadHistory());
+        }
+        if (this.args.retries > 0) {
+            promises.push(this.uploadNewResults());
+        }
+        await allFulfilledResults(promises);
     }
     // ============= Private Helper Methods =============
     /**
@@ -143,7 +147,7 @@ export class GithubStorage {
                 await this.unzipToStaging(filePath, this.args.RESULTS_STAGING_PATH);
             }));
         }
-        await Promise.allSettled(tasks);
+        await allFulfilledResults(tasks);
     }
     /**
      * Returns the path for the history folder.
