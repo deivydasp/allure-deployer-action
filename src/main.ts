@@ -24,7 +24,7 @@ import {GitHubNotifier} from "./features/messaging/github-notifier.js";
 import {GitHubConfig, GithubPagesService} from "./services/github-pages.service.js";
 import {GithubHost} from "./features/hosting/github.host.js";
 import github from "@actions/github";
-import {error, warning, info} from "@actions/core";
+import {error, warning, info, startGroup, endGroup} from "@actions/core";
 import {copyDirectory, setGoogleCredentialsEnv, validateSlackConfig} from "./utilities/util.js";
 import {ArtifactService, ArtifactServiceConfig} from "./services/artifact.service.js";
 import {GithubStorage, GithubStorageConfig} from "./features/github-storage.js";
@@ -72,7 +72,10 @@ async function executeDeployment() {
             });
 
             if (response.data.build_type !== "legacy" || response.data.source?.branch !== inputs.github_pages_branch) {
-                error(`GitHub Pages must be set to deploy from '${inputs.github_pages_branch}' branch.`);
+                startGroup('Github Pages Configuration Error')
+                error(`GitHub Pages must be configured to deploy from '${inputs.github_pages_branch}' branch.`);
+                error(`${github.context.serverUrl}/${inputs.github_pages_repo}/settings/pages`)
+                endGroup()
                 process.exit(1);
             }
             // remove first '/' from the GitHub pages source directory
