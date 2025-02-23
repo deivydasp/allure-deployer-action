@@ -155,7 +155,7 @@ I'm available for consulting and freelance work.
 
 - **Skills:** Mobile Test Automation (Appium, WebdriverIO), CI/CD, Docker, GitHub Actions, Firebase, and more.
 - **Experience:** 8+ years in software engineering, building scalable automation solutions.
-- **Contact:** Reach me via email at `sokariharry[@]gmail[dot]com` or connect on [LinkedIn](https://www.linkedin.com/in/sokari/).
+- **Contact:** Reach me via email at `sokariharry[at]gmail[dot]com` or connect on [LinkedIn](https://www.linkedin.com/in/sokari/).
 
 Let's work together to improve your testing and deployment processes!
 

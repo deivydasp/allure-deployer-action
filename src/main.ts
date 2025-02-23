@@ -43,14 +43,8 @@ async function executeDeployment() {
         let reportDir
         let host: HostingProvider
         if (inputs.target === 'firebase') {
-            const credentials = inputs.google_credentials_json;
-            if (!credentials) {
-                error("Firebase Hosting require a valid 'google_credentials_json'");
-                process.exit(1);
-            }
-            let firebaseProjectId = (await setGoogleCredentialsEnv(credentials)).project_id;
             reportDir = inputs.WORKSPACE
-            host = getFirebaseHost({firebaseProjectId, REPORTS_DIR: reportDir});
+            host = await getFirebaseHost(reportDir);
         } else {
             const token = inputs.github_token;
             if (!token) {// Check for empty string
@@ -59,7 +53,7 @@ async function executeDeployment() {
             }
 
             const [owner, repo] = inputs.github_pages_repo!.split('/')
-            const response = await github.getOctokit(token).rest.repos.getPages({
+            const {data} = await github.getOctokit(token).rest.repos.getPages({
                 owner,
                 repo
             }).catch((e) => {
@@ -71,21 +65,21 @@ async function executeDeployment() {
                 process.exit(1);
             });
 
-            if (response.data.build_type !== "legacy" || response.data.source?.branch !== inputs.github_pages_branch) {
-                startGroup('Github Pages Configuration Error')
+            if (data.build_type !== "legacy" || data.source?.branch !== inputs.github_pages_branch) {
+                startGroup('Configuration Error')
                 error(`GitHub Pages must be configured to deploy from '${inputs.github_pages_branch}' branch.`);
                 error(`${github.context.serverUrl}/${inputs.github_pages_repo}/settings/pages`)
                 endGroup()
                 process.exit(1);
             }
             // remove first '/' from the GitHub pages source directory
-            const pagesSourcePath = response.data.source!.path.replace('/', '')
+            const pagesSourcePath = data.source!.path.replace('/', '')
 
             // reportDir with prefix == workspace/page-source-path/prefix/run-id
             // reportDir without a prefix == workspace/page-source-path/run-id
             const reportSubDir = path.posix.join(pagesSourcePath, inputs.prefix ?? '', github.context.runId.toString())
             reportDir = path.posix.join(inputs.WORKSPACE, reportSubDir)
-            const pageUrl = normalizeUrl(`${response.data.html_url!}/${reportSubDir}`)
+            const pageUrl = normalizeUrl(`${data.html_url!}/${reportSubDir}`)
             host = getGitHubHost({
                 token, pageUrl,
                 reportDir, pagesSourcePath,
@@ -112,10 +106,14 @@ async function executeDeployment() {
     }
 }
 
-function getFirebaseHost({firebaseProjectId, REPORTS_DIR}: {
-    firebaseProjectId: string;
-    REPORTS_DIR: string;
-}): FirebaseHost {
+async function getFirebaseHost(
+    REPORTS_DIR: string): Promise<FirebaseHost> {
+    const credentials = inputs.google_credentials_json;
+    if (!credentials) {
+        error("Firebase Hosting require a valid 'google_credentials_json'");
+        process.exit(1);
+    }
+    let firebaseProjectId = (await setGoogleCredentialsEnv(credentials)).project_id;
     return new FirebaseHost(new FirebaseService(firebaseProjectId, REPORTS_DIR), inputs.keep);
 }
 

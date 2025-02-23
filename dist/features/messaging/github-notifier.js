@@ -28,9 +28,7 @@ export class GitHubNotifier {
         if (this.token && this.prComment && this.prNumber) {
             promises.push(this.client.updatePr({ message, token: this.token, prNumber: this.prNumber }));
         }
-        else {
-            promises.push(this.client.updateSummary(message.trim()));
-        }
+        promises.push(this.client.updateSummary(message.trim()));
         await Promise.allSettled(promises);
     }
 }
