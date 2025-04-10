@@ -50,6 +50,7 @@ export class GithubPagesService implements GithubPagesInterface {
             process.exit(1);
         }
         await this.git.add(`${removeTrailingSlash(this.reportDir)}/*`);
+        await this.git.fetch("origin", this.branch);
         await this.git.commit(`Allure report for GitHub run: ${context.runId}`);
         await this.git.push("origin", this.branch);
 
