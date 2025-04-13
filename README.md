@@ -27,7 +27,7 @@ jobs:
       - name: Run test
         run: #Run test and create allure results
       - name: Deploy Reports to GitHub pages with History and Retries
-        uses: cybersokari/allure-deployer-action@v1.8.0
+        uses: cybersokari/allure-deployer-action@v1.9.7
         with:
           target: 'github'
           github_pages_branch: 'gh-pages'
@@ -50,7 +50,7 @@ jobs:
       - name: Run test
         run: #Run test and create allure results
       - name: Deploy Reports to Firebase with History and Retries
-        uses: cybersokari/allure-deployer-action@v1.8.0
+        uses: cybersokari/allure-deployer-action@v1.9.7
         with:
           target: 'firebase'
           allure_results_path: 'allure-results'
@@ -81,7 +81,7 @@ jobs:
       - name: Run test
         run: #Run test and create allure results
       - name: Deploy Reports to GitHub pages on Pull Request
-        uses: cybersokari/allure-deployer-action@v1.8.0
+        uses: cybersokari/allure-deployer-action@v1.9.7
         with:
           pr_comment: 'true'
           target: 'github'
