@@ -51,6 +51,8 @@ export class GithubPagesService {
     }
     /** Initializes and sets up the branch for GitHub Pages deployment */
     async setupBranch() {
+        // Remove the .git folder if it exists
+        fs.rmSync(`${inputs.WORKSPACE}/.git`, { recursive: true, force: true });
         await this.git.cwd(inputs.WORKSPACE);
         await this.git.init();
         const headers = {
