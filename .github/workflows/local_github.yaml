@@ -8,6 +8,7 @@ on:
         options:
           - gh
           - gh-no-backup
+          - gh-multi
         default: gh
       runner:
         description: Runner to use
@@ -57,6 +58,42 @@ jobs:
     steps:
       - uses: actions/checkout@v4.1.5
       - name: Deploy Reports to GitHub pages with History and Retries
+        uses: ./
+        with:
+          target: 'github'
+          github_pages_branch: ${{github.event.inputs.branch}}
+          gh_artifact_prefix: ${{github.event.inputs.prefix || ''}}
+          allure_results_path: 'allure-results'
+          show_history: ${{github.event.inputs.show-history}}
+          retries: ${{github.event.inputs.retries}}
+          report_name: ${{github.event.inputs.report-name}}
+          language: ${{github.event.inputs.report-lang}}
+          slack_channel: ${{github.event.inputs.slack == true && secrets.SLACK_CHANNEL || '' }}
+          slack_token: ${{github.event.inputs.slack == true && secrets.SLACK_TOKEN || ''}}
+
+  gh-multi:
+    if: ${{ github.event.inputs.job == 'gh-multi' }}
+    runs-on: ${{ github.event.inputs.runner }}
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - uses: actions/checkout@v4.1.5
+      - name: Deploy Reports to GitHub pages 1
+        uses: ./
+        with:
+          target: 'github'
+          github_pages_branch: ${{github.event.inputs.branch}}
+          gh_artifact_prefix: ${{github.event.inputs.prefix || ''}}
+          allure_results_path: 'allure-results'
+          show_history: ${{github.event.inputs.show-history}}
+          retries: ${{github.event.inputs.retries}}
+          report_name: ${{github.event.inputs.report-name}}
+          language: ${{github.event.inputs.report-lang}}
+          slack_channel: ${{github.event.inputs.slack == true && secrets.SLACK_CHANNEL || '' }}
+          slack_token: ${{github.event.inputs.slack == true && secrets.SLACK_TOKEN || ''}}
+
+      - name: Deploy Reports to GitHub pages 2
         uses: ./
         with:
           target: 'github'
