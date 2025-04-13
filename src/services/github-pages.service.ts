@@ -80,10 +80,13 @@ export class GithubPagesService implements GithubPagesInterface {
 
     /** Initializes and sets up the branch for GitHub Pages deployment */
     async setupBranch(): Promise<string> {
-        // Remove the .git folder if it exists
-        fs.rmSync(`${inputs.WORKSPACE}/.git`, { recursive: true, force: true });
 
         await this.git.cwd(inputs.WORKSPACE)
+        if (await this.git.checkIsRepo()) {
+            fs.rmSync(inputs.WORKSPACE, { recursive: true, force: true });
+            fs.mkdirSync(inputs.WORKSPACE, { recursive: true });
+            await this.git.cwd(inputs.WORKSPACE)
+        }
         await this.git.init();
 
         const headers = {
