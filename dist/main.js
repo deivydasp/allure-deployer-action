@@ -56,7 +56,7 @@ async function executeDeployment() {
             const pagesSourcePath = data.source.path.replace('/', '');
             // reportDir with prefix == workspace/page-source-path/prefix/run-id
             // reportDir without a prefix == workspace/page-source-path/run-id
-            const reportSubDir = path.posix.join(pagesSourcePath, inputs.prefix ?? '', github.context.runId.toString());
+            const reportSubDir = path.posix.join(pagesSourcePath, inputs.prefix ?? '', Date.now().toString());
             reportDir = path.posix.join(inputs.WORKSPACE, reportSubDir);
             const pageUrl = normalizeUrl(`${data.html_url}/${reportSubDir}`);
             host = getGitHubHost({
