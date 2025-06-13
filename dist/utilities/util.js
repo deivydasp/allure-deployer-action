@@ -59,7 +59,9 @@ export function isRetryableError(error) {
     return (error.status && retryableStatusCodes.includes(error.status) ||
         error.message?.includes('rate limit') ||
         error.message?.includes('timeout') ||
-        error.message?.includes('network error'));
+        error.message?.includes('network error') ||
+        error.message?.includes('tip of your current branch is behind')
+    );
 }
 /**
  * Utility function to implement retry logic with exponential backoff

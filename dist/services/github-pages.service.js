@@ -6,7 +6,7 @@ import pLimit from "p-limit";
 import core, { info } from "@actions/core";
 import normalizeUrl from "normalize-url";
 import inputs from "../io.js";
-import { allFulfilledResults, removeTrailingSlash } from "../utilities/util.js";
+import { allFulfilledResults, removeTrailingSlash, withRetry } from "../utilities/util.js";
 export class GithubPagesService {
     constructor(config) {
         this.branch = config.branch;
@@ -26,9 +26,13 @@ export class GithubPagesService {
             process.exit(1);
         }
         await this.git.add(`${removeTrailingSlash(this.reportDir)}/*`);
-        await this.git.fetch("origin", this.branch);
+        
+        // Create the commit
         await this.git.commit(`Allure report for GitHub run: ${context.runId}`);
-        await this.git.push("origin", this.branch);
+        
+        // Push with retry mechanism to handle concurrent updates
+        await this.gitPushWithRetry();
+
         console.log(`Allure report pages pushed to '${this.reportDir}' on '${this.branch}' branch`);
     }
     /** Ensures the repository and required directories are set up */
@@ -160,5 +164,24 @@ export class GithubPagesService {
             .pop();
         await this.git.checkoutBranch(this.branch, `origin/${defaultBranch}`);
         console.log(`Branch '${this.branch}' created from '${defaultBranch}'.`);
+    }
+    /** Handles Git push with retry logic specifically for concurrent push scenarios */
+    async gitPushWithRetry() {
+        await withRetry(async () => {
+            try {
+                // Pull to fetch and merge remote changes in one operation
+                try {
+                    await this.git.pull(["origin", this.branch]);
+                } catch (pullError) {
+                    console.warn(`Pull failed: ${pullError}. Will try direct push...`);
+                }
+                
+                // Push to remote
+                await this.git.push("origin", this.branch);
+            } catch (error) {
+                console.warn(`Push attempt failed: ${error.message}`);
+                throw error; // Let the retry mechanism handle it
+            }
+        });
     }
 }
