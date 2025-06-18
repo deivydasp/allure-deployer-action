@@ -230,8 +230,10 @@ export class GithubPagesService implements GithubPagesInterface {
         await withRetry(async () => {
             try {
                 // Pull to fetch and merge remote changes in one operation
+                // Specify merge strategy to handle divergent branches
                 try {
-                    await this.git.pull(["origin", this.branch]);
+                    await this.git.pull(["--no-rebase", "origin", this.branch]);
+                    console.log("Successfully pulled remote changes");
                 } catch (pullError: any) {
                     console.warn(`Pull failed: ${pullError}. Will try direct push...`);
                 }

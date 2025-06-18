@@ -7,6 +7,7 @@ import core, { info } from "@actions/core";
 import normalizeUrl from "normalize-url";
 import inputs from "../io.js";
 import { allFulfilledResults, removeTrailingSlash, withRetry } from "../utilities/util.js";
+
 export class GithubPagesService {
     constructor(config) {
         this.branch = config.branch;
@@ -170,8 +171,10 @@ export class GithubPagesService {
         await withRetry(async () => {
             try {
                 // Pull to fetch and merge remote changes in one operation
+                // Specify merge strategy to handle divergent branches
                 try {
-                    await this.git.pull(["origin", this.branch]);
+                    await this.git.pull(["--no-rebase", "origin", this.branch]);
+                    console.log("Successfully pulled remote changes");
                 } catch (pullError) {
                     console.warn(`Pull failed: ${pullError}. Will try direct push...`);
                 }
