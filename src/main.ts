@@ -203,150 +203,24 @@ async function getCloudStorageService({storageBucket, googleCredentialData}: {
     }
 }
 
-interface TimedOperation {
-    name: string;
-    operation: () => Promise<any>;
-}
-
-interface OperationResult {
-    name: string;
-    result: any;
-    duration: number;
-    status: 'fulfilled' | 'rejected';
-    error?: Error;
-}
-
 async function stageDeployment({storage, host}: {
     storage?: IStorage, host: HostingProvider
 }) {
     info("Staging files...");
-    const RESULTS_PATHS = await validateResultsPaths(inputs.allure_results_path);
-    
-    // Create timed operations
-    const timedOperations: TimedOperation[] = [
-        {
-            name: "host.init()",
-            operation: () => host.init()
-        },
-        {
-            name: "copyFiles",
-            operation: () => copyFiles({
-                from: RESULTS_PATHS,
-                to: inputs.RESULTS_STAGING_PATH,
-                concurrency: inputs.fileProcessingConcurrency,
-            })
-        },
-        {
-            name: "storage.stageFilesFromStorage()",
-            operation: () => (inputs.show_history || inputs.retries > 0) ? 
-                storage?.stageFilesFromStorage() ?? Promise.resolve(undefined) : 
-                Promise.resolve(undefined)
-        }
-    ];
+    const RESULTS_PATHS = await validateResultsPaths(inputs.allure_results_path)
 
-    // Execute operations with timing
-    const startTime = Date.now();
-    const operationPromises: Promise<OperationResult>[] = timedOperations.map(async (op: TimedOperation): Promise<OperationResult> => {
-        const opStartTime = Date.now();
-        try {
-            const result = await op.operation();
-            const duration = Date.now() - opStartTime;
-            return {
-                name: op.name,
-                result,
-                duration,
-                status: 'fulfilled'
-            };
-        } catch (error) {
-            const duration = Date.now() - opStartTime;
-            return {
-                name: op.name,
-                result: undefined,
-                duration,
-                status: 'rejected',
-                error: error instanceof Error ? error : new Error(String(error))
-            };
-        }
+    const copyResultsFiles = copyFiles({
+        from: RESULTS_PATHS,
+        to: inputs.RESULTS_STAGING_PATH,
+        concurrency: inputs.fileProcessingConcurrency,
     });
-
-    const results: OperationResult[] = await Promise.all(operationPromises);
-    const totalDuration = Date.now() - startTime;
-
-    // Log timing results
-    console.log(`📊 Staging operations completed in ${formatDuration(totalDuration)}:`);
-    
-    // Sort by duration (longest first) and log
-    const sortedResults: OperationResult[] = [...results].sort((a, b) => b.duration - a.duration);
-    
-    sortedResults.forEach((result: OperationResult, index: number) => {
-        const percentage = ((result.duration / totalDuration) * 100).toFixed(1);
-        const status = result.status === 'fulfilled' ? '✅' : '❌';
-        const errorInfo = result.status === 'rejected' ? ` - Error: ${result.error?.message}` : '';
-        
-        console.log(`${index + 1}. ${status} ${result.name}: ${formatDuration(result.duration)} (${percentage}% of total)${errorInfo}`);
-    });
-
-    // Log summary and warnings
-    logPerformanceAnalysis(sortedResults, totalDuration);
-
-    // Check for any failures
-    const failures = results.filter((r: OperationResult) => r.status === 'rejected');
-    if (failures.length > 0) {
-        console.error(`❌ ${failures.length} staging operation(s) failed:`);
-        failures.forEach((failure: OperationResult) => {
-            console.error(`  - ${failure.name}: ${failure.error?.message}`);
-        });
-    }
-
+    const result = await Promise.all([
+        host.init(),
+        copyResultsFiles,
+        inputs.show_history || inputs.retries > 0 ? storage?.stageFilesFromStorage() : undefined,
+    ]);
     info("Files staged successfully.");
-    
-    // Return results in original format for compatibility
-    return results.map((r: OperationResult) => r.result);
-}
-
-function logPerformanceAnalysis(sortedResults: OperationResult[], totalDuration: number): void {
-    const slowestOperation = sortedResults[0];
-    
-    if (slowestOperation.duration > totalDuration * 0.5) {
-        const percentage = ((slowestOperation.duration / totalDuration) * 100).toFixed(1);
-        warning(`⚠️  ${slowestOperation.name} took ${formatDuration(slowestOperation.duration)} (${percentage}% of total staging time)`);
-    }
-
-    // Additional performance insights
-    const significantOperations = sortedResults.filter(op => op.duration > totalDuration * 0.1);
-    if (significantOperations.length > 1) {
-        console.log(`📈 Operations taking >10% of total time:`);
-        significantOperations.forEach((op: OperationResult) => {
-            const percentage = ((op.duration / totalDuration) * 100).toFixed(1);
-            console.log(`  • ${op.name}: ${percentage}%`);
-        });
-    }
-
-    // Memory usage check if available
-    if (typeof process !== 'undefined' && process.memoryUsage) {
-        const memUsage = process.memoryUsage();
-        const heapUsedMB = (memUsage.heapUsed / 1024 / 1024).toFixed(1);
-        const externalMB = (memUsage.external / 1024 / 1024).toFixed(1);
-        console.log(`🧠 Memory usage after staging: Heap: ${heapUsedMB}MB, External: ${externalMB}MB`);
-    }
-}
-
-function formatDuration(ms: number): string {
-    if (ms < 1000) {
-        return `${ms}ms`;
-    }
-    
-    const seconds = Math.floor(ms / 1000);
-    const remainingMs = ms % 1000;
-    
-    if (seconds < 60) {
-        return remainingMs > 0 ? `${seconds}.${Math.floor(remainingMs / 100)}s` : `${seconds}s`;
-    }
-    
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    
-    return `${minutes}m ${remainingSeconds}s`;
+    return result;
 }
 
 async function generateAllureReport({
