@@ -113,7 +113,7 @@ export class GithubPagesService implements GithubPagesInterface {
         const remote = `${context.serverUrl}/${this.owner}/${this.repo}.git`;
         await this.git.addRemote("origin", remote);
 
-        const fetchResult = await this.git.fetch("origin", this.branch, { "--depth": 1 , "--no-tags": null, "--single-branch": null });
+        const fetchResult = await this.git.fetch("origin", this.branch, { "--depth": 1 , "--no-tags": null });
 
         if (fetchResult.branches.length === 0) {
             await this.createBranchFromDefault();
