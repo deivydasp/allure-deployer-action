@@ -9,11 +9,7 @@ export class GithubHost implements HostingProvider{
     }
 
     async init(): Promise<string> {
-        const startTime = Date.now();
-        const result = await this.client.setupBranch();
-        const endTime = Date.now();
-        console.log(`Setup github pages branch took ${endTime - startTime}ms`);
-        return result;
+        return await this.client.setupBranch()
     }
 
 }
