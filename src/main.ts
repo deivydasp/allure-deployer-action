@@ -2,7 +2,6 @@ import * as process from "node:process";
 import {
     Allure, AllureConfig,
     ConsoleNotifier,
-    copyFiles,
     ExecutorInterface,
     FirebaseHost,
     FirebaseService,
@@ -33,6 +32,10 @@ import inputs from "./io.js";
 import normalizeUrl from "normalize-url";
 import path from "node:path";
 import {RequestError} from "@octokit/request-error";
+import pLimit from "p-limit";
+import { pipeline } from 'stream/promises';
+import { createReadStream, createWriteStream } from 'fs';
+import fs, { stat } from 'fs/promises';
 
 export function main() {
     (async () => await executeDeployment())();
@@ -90,7 +93,7 @@ async function executeDeployment() {
 
         const storageRequired: boolean = inputs.show_history || inputs.retries > 0
         const storage = storageRequired ? await initializeStorage(reportDir) : undefined
-        const [reportUrl] = await stageDeployment({host, storage});
+        const [reportUrl] = await stageDeployment({ storage, host });
         const config: AllureConfig = {
             RESULTS_STAGING_PATH: inputs.RESULTS_STAGING_PATH,
             REPORTS_DIR: reportDir,
@@ -308,4 +311,214 @@ function handleStorageError(error: any) {
         404: "Bucket not found. Verify the bucket name and its existence.",
     };
     error(errorMessage[error.code] || `An unexpected error occurred: ${error.message}`);
+}
+
+async function copyFiles({
+    from,
+    to,
+    concurrency = 10,
+    overwrite = false,
+}: {
+    from: string[];
+    to: string;
+    concurrency?: number;
+    overwrite?: boolean;
+}): Promise<void> {
+    const BIG_FILE_THRESHOLD = 1024 * 1024; // 1MB
+    
+    // Separate limits for different file sizes
+    const smallFileLimit = pLimit(concurrency); // Full concurrency for small files
+    const bigFileLimit = pLimit(Math.max(2, Math.floor(concurrency / 3))); // One third concurrency for big files
+    
+    const copyPromises: Promise<void>[] = [];
+    const fileStats: Array<{path: string, size: number, dest: string, isDirectory?: boolean}> = [];
+
+    // Ensure the destination directory exists
+    await fs.mkdir(to, { recursive: true });
+
+    // First pass: collect file information
+    for (const dir of from) {
+        try {
+            const files = await fs.readdir(dir, { withFileTypes: true });
+
+            for (const file of files) {
+                if (!file.isFile()) continue;
+
+                const filePath = path.posix.join(dir, file.name);
+                const destination = path.posix.join(to, file.name);
+                
+                try {
+                    const stats = await stat(filePath);
+                    fileStats.push({
+                        path: filePath,
+                        size: stats.size,
+                        dest: destination
+                    });
+                } catch (error) {
+                    console.warn(`Error getting stats for ${filePath}:`, error);
+                }
+            }
+        } catch (error) {
+            console.warn(`Error reading directory ${dir}:`, error);
+        }
+    }
+
+    // Sort files by size (process small files first)
+    fileStats.sort((a, b) => a.size - b.size);
+
+    // Second pass: copy files with appropriate strategy
+    for (const fileInfo of fileStats) {
+        if (fileInfo.size >= BIG_FILE_THRESHOLD) {
+            // Big files (>=1MB): streaming with progress
+            copyPromises.push(
+                bigFileLimit(() => copyBigFileWithStreaming(fileInfo, overwrite))
+            );
+        } else {
+            // Small files (<1MB): standard copy
+            copyPromises.push(
+                smallFileLimit(() => copySmallFile(fileInfo, overwrite))
+            );
+        }
+    }
+
+    // Monitor overall progress
+    const progressMonitor = monitorCopyProgress(fileStats);
+    
+    try {
+        const results = await Promise.allSettled(copyPromises);
+        
+        // Check for failures
+        const failures = results.filter(r => r.status === 'rejected');
+        if (failures.length > 0) {
+            console.warn(`${failures.length} file copy operations failed`);
+            failures.forEach((failure, index) => {
+                if (failure.status === 'rejected') {
+                    console.warn(`Copy failure ${index + 1}:`, failure.reason);
+                }
+            });
+        }
+        
+        progressMonitor.complete();
+    } catch (error) {
+        progressMonitor.error(error);
+        throw error;
+    }
+}
+
+async function copySmallFile(
+    fileInfo: {path: string, size: number, dest: string}, 
+    overwrite: boolean
+): Promise<void> {
+    try {
+        await fs.cp(fileInfo.path, fileInfo.dest, { 
+            force: overwrite, 
+            errorOnExist: false 
+        });
+    } catch (error) {
+        console.error(`❌ Failed to copy small file ${fileInfo.path}:`, error);
+        throw error;
+    }
+}
+
+async function copyBigFileWithStreaming(
+    fileInfo: {path: string, size: number, dest: string}, 
+    overwrite: boolean
+): Promise<void> {
+    let readStream: NodeJS.ReadableStream | undefined;
+    let writeStream: NodeJS.WritableStream | undefined;
+    let bytesWritten = 0;
+    const fileName = path.basename(fileInfo.path);
+
+    try {
+
+        readStream = createReadStream(fileInfo.path, {
+            highWaterMark: 256 * 1024 // 256KB chunks for big files
+        });
+
+        writeStream = createWriteStream(fileInfo.dest, {
+            flags: overwrite ? 'w' : 'wx'
+        });
+
+        // Track progress for big files
+        readStream.on('data', (chunk: Buffer) => {
+            bytesWritten += chunk.length;
+            
+            // Log progress every 10MB or 25% of file size, whichever is smaller
+            const progressInterval = Math.min(10 * 1024 * 1024, Math.floor(fileInfo.size * 0.25));
+            
+            if (progressInterval > 0 && bytesWritten % progressInterval < chunk.length) {
+                const progress = ((bytesWritten / fileInfo.size) * 100).toFixed(1);
+                console.log(`📊 ${fileName}: ${progress}% (${formatFileSize(bytesWritten)}/${formatFileSize(fileInfo.size)})`);
+            }
+        });
+
+        await pipeline(readStream, writeStream);
+        
+        console.log(`✅ Big file copied successfully: ${fileName} (${formatFileSize(fileInfo.size)})`);
+    } catch (error) {
+        // Cleanup on error
+        if (readStream && 'destroy' in readStream) {
+            (readStream as any).destroy();
+        }
+        if (writeStream && 'destroy' in writeStream) {
+            (writeStream as any).destroy();
+        }
+
+        // Remove partially written file
+        try {
+            await fs.unlink(fileInfo.dest);
+        } catch {
+            // Ignore cleanup errors
+        }
+
+        console.error(`❌ Failed to copy big file ${fileInfo.path}:`, error);
+        throw error;
+    }
+}
+
+function monitorCopyProgress(fileStats: Array<{path: string, size: number, dest: string}>) {
+    const totalSize = fileStats.reduce((sum, file) => sum + file.size, 0);
+    const totalFiles = fileStats.length;
+    const smallFiles = fileStats.filter(f => f.size < 1024 * 1024).length;
+    const bigFiles = fileStats.filter(f => f.size >= 1024 * 1024).length;
+    const startTime = Date.now();
+
+    console.log(`📁 Starting to copy ${totalFiles} files (${formatFileSize(totalSize)} total)`);
+    console.log(`📊 File breakdown: ${smallFiles} small files (<1MB), ${bigFiles} big files (>=1MB)`);
+
+    return {
+        complete: () => {
+            const duration = Date.now() - startTime;
+            const throughput = totalSize / (duration / 1000);
+            console.log(`✅ Copy completed: ${totalFiles} files (${formatFileSize(totalSize)}) in ${formatDuration(duration)}`);
+            console.log(`📈 Average throughput: ${formatFileSize(throughput)}/s`);
+        },
+        error: (error: any) => {
+            const duration = Date.now() - startTime;
+            console.error(`❌ Copy failed after ${formatDuration(duration)}:`, error);
+        }
+    };
+}
+
+function formatFileSize(bytes: number): string {
+    const units = ['B', 'KB', 'MB', 'GB'];
+    let size = bytes;
+    let unitIndex = 0;
+
+    while (size >= 1024 && unitIndex < units.length - 1) {
+        size /= 1024;
+        unitIndex++;
+    }
+
+    return `${size.toFixed(1)}${units[unitIndex]}`;
+}
+
+function formatDuration(ms: number): string {
+    const seconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(seconds / 60);
+    
+    if (minutes > 0) {
+        return `${minutes}m ${seconds % 60}s`;
+    }
+    return `${seconds}s`;
 }
