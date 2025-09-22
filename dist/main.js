@@ -68,7 +68,7 @@ async function executeDeployment() {
         await mkdir(reportDir, { recursive: true, mode: 0o755 });
         const storageRequired = inputs.show_history || inputs.retries > 0;
         const storage = storageRequired ? await initializeStorage(reportDir) : undefined;
-        const [reportUrl] = await stageDeployment({ host, storage });
+        const reportUrl = await stageDeployment({ host, storage });
         const config = {
             RESULTS_STAGING_PATH: inputs.RESULTS_STAGING_PATH,
             REPORTS_DIR: reportDir,
@@ -174,11 +174,17 @@ async function stageDeployment({ storage, host }) {
         to: inputs.RESULTS_STAGING_PATH,
         concurrency: inputs.fileProcessingConcurrency,
     });
-    const result = await Promise.all([
-        host.init(),
-        copyResultsFiles,
-        inputs.show_history || inputs.retries > 0 ? storage?.stageFilesFromStorage() : undefined,
-    ]);
+    // const result = await Promise.all([
+    //     host.init(),
+    //     copyResultsFiles,
+    //     inputs.show_history || inputs.retries > 0 ? storage?.stageFilesFromStorage() : undefined,
+    // ]);
+    //run sequentially to avoid memory spikes
+    const result = await host.init();
+    await copyResultsFiles;
+    if (inputs.show_history || inputs.retries > 0) {
+        await storage?.stageFilesFromStorage();
+    }
     info("Files staged successfully.");
     return result;
 }
