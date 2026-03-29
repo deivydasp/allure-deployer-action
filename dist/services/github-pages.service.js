@@ -1,5 +1,4 @@
-import { existsSync, mkdirSync, rmSync } from 'node:fs';
-import { cp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import fs from 'fs';
 import path from 'node:path';
 import simpleGit, { CheckRepoActions } from 'simple-git';
 import { context } from '@actions/github';
@@ -9,14 +8,6 @@ import normalizeUrl from 'normalize-url';
 import inputs from '../io.js';
 import { allFulfilledResults, removeTrailingSlash, withRetry } from '../utilities/util.js';
 export class GithubPagesService {
-    git;
-    branch;
-    repo;
-    owner;
-    token;
-    reportDir;
-    pagesSourcePath;
-    pageUrl;
     constructor(config) {
         this.branch = config.branch;
         this.owner = config.owner;
@@ -29,7 +20,7 @@ export class GithubPagesService {
     }
     /** Deploys the Allure report to GitHub Pages */
     async deployPages() {
-        if (!existsSync(this.reportDir)) {
+        if (!fs.existsSync(this.reportDir)) {
             throw new Error(`Directory not found: ${this.reportDir}`);
         }
         if (!(await this.git.checkIsRepo(CheckRepoActions.IS_REPO_ROOT))) {
@@ -43,11 +34,9 @@ export class GithubPagesService {
     async prepareAndCommit() {
         // Running sequentially to avoid git lock issues
         await this.deleteOldReports();
-        if (inputs.prefix) {
-            await this.createRedirectPage(normalizeUrl(`${this.pageUrl}`));
-            await this.createRootSummaryPage();
-        }
-        if (!existsSync(path.join(this.reportDir, 'index.html'))) {
+        await this.createRedirectPage(normalizeUrl(`${this.pageUrl}`));
+        await this.createRootSummaryPage();
+        if (!fs.existsSync(path.join(this.reportDir, 'index.html'))) {
             throw new Error(`No index.html found in ${this.reportDir}. Deployment aborted.`);
         }
         await this.git.add(`${removeTrailingSlash(this.reportDir)}/*`);
@@ -57,8 +46,8 @@ export class GithubPagesService {
     async setupBranch() {
         await this.git.cwd(inputs.WORKSPACE);
         if (await this.git.checkIsRepo()) {
-            rmSync(inputs.WORKSPACE, { recursive: true, force: true });
-            mkdirSync(inputs.WORKSPACE, { recursive: true });
+            fs.rmSync(inputs.WORKSPACE, { recursive: true, force: true });
+            fs.mkdirSync(inputs.WORKSPACE, { recursive: true });
             await this.git.cwd(inputs.WORKSPACE);
         }
         await this.git.init();
@@ -67,8 +56,7 @@ export class GithubPagesService {
         };
         await this.git.addConfig('http.https://github.com/.extraheader', `AUTHORIZATION: ${headers.Authorization}`, true, 'local');
         const actor = context.actor;
-        const senderId = context.payload.sender?.id ?? 41898282; // fallback: github-actions[bot]
-        const email = `${senderId}+${actor}@users.noreply.github.com`;
+        const email = `${context.payload.sender?.id}+${actor}@users.noreply.github.com`;
         await this.git.addConfig('user.email', email, true, 'local').addConfig('user.name', actor, true, 'local');
         const remote = `${context.serverUrl}/${this.owner}/${this.repo}.git`;
         await this.git.addRemote('origin', remote);
@@ -83,14 +71,13 @@ export class GithubPagesService {
     }
     /** Creates a redirect page for the Allure report */
     async createRedirectPage(redirectUrl) {
-        const escapedUrl = normalizeUrl(`${redirectUrl}/index.html`).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
         const htmlContent = `<!DOCTYPE html>
 <meta charset="utf-8">
-<meta http-equiv="refresh" content="0; URL=${escapedUrl}">
+<meta http-equiv="refresh" content="0; URL=${normalizeUrl(`${redirectUrl}/index.html`)}">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">`;
         const filePath = path.join(inputs.WORKSPACE, this.pagesSourcePath ?? '', inputs.prefix ?? '', 'index.html');
-        await writeFile(filePath, htmlContent);
+        await fs.promises.writeFile(filePath, htmlContent);
         await this.git.add(filePath);
         info(`Redirect 'index.html' created at ${path.posix.join(this.pagesSourcePath || '/', inputs.prefix ?? '')}`);
     }
@@ -98,17 +85,14 @@ export class GithubPagesService {
     async createRootSummaryPage() {
         try {
             const rootDir = path.join(inputs.WORKSPACE, this.pagesSourcePath ?? '');
-            const entries = await readdir(rootDir, { withFileTypes: true });
+            const entries = await fs.promises.readdir(rootDir, { withFileTypes: true });
             const summaries = [];
             for (const entry of entries) {
                 if (!entry.isDirectory())
                     continue;
                 const prefixDir = path.join(rootDir, entry.name);
                 // Only include prefixes that have numeric run subdirs (deployed reports)
-                const runs = await readdir(prefixDir, { withFileTypes: true }).catch((e) => {
-                    warning(`Failed to read prefix directory '${entry.name}': ${e}`);
-                    return [];
-                });
+                const runs = await fs.promises.readdir(prefixDir, { withFileTypes: true }).catch(() => []);
                 const runDirs = runs
                     .filter((r) => r.isDirectory() && /^\d+$/.test(r.name))
                     .sort((a, b) => Number(b.name) - Number(a.name));
@@ -118,8 +102,8 @@ export class GithubPagesService {
                 try {
                     for (const candidate of ['summary.json', 'awesome/summary.json']) {
                         const summaryPath = path.join(latestDir, candidate);
-                        if (existsSync(summaryPath)) {
-                            const summary = JSON.parse(await readFile(summaryPath, 'utf8'));
+                        if (fs.existsSync(summaryPath)) {
+                            const summary = JSON.parse(await fs.promises.readFile(summaryPath, 'utf8'));
                             // Normalize Allure v2 format (statistic) to v3 format (stats)
                             if (!summary.stats && summary.statistic) {
                                 summary.stats = summary.statistic;
@@ -146,10 +130,6 @@ export class GithubPagesService {
                 warning(`@allurereport/summary not available, skipping root summary page: ${e}`);
                 return;
             }
-            if (typeof generateSummary !== 'function') {
-                warning('@allurereport/summary does not export generateSummary — skipping root summary page');
-                return;
-            }
             await generateSummary(rootDir, summaries);
             await this.git.add(path.join(rootDir, 'index.html'));
             info('Root summary page created');
@@ -162,24 +142,23 @@ export class GithubPagesService {
     async deleteOldReports() {
         try {
             const parentDir = path.dirname(this.reportDir);
-            const entries = await readdir(parentDir, { withFileTypes: true });
+            const entries = await fs.promises.readdir(parentDir, { withFileTypes: true });
             // Single pass: filter report directories (name is a Date.now() timestamp)
             const reports = [];
             for (const entry of entries) {
                 if (!entry.isDirectory())
                     continue;
                 const dirPath = path.join(entry.parentPath, entry.name);
-                if (existsSync(path.join(dirPath, 'index.html'))) {
+                if (fs.existsSync(path.join(dirPath, 'index.html'))) {
                     reports.push({ dir: dirPath, name: entry.name });
                 }
             }
-            // Account for the incoming report (not yet on disk) by keeping one fewer old report
-            if (reports.length >= inputs.keep) {
+            if (reports.length > 1 && reports.length >= inputs.keep) {
                 reports.sort((a, b) => Number(a.name) - Number(b.name));
                 const limit = pLimit(10);
-                const toDelete = reports.slice(0, reports.length - inputs.keep + 1);
+                const toDelete = reports.slice(0, reports.length - inputs.keep);
                 await allFulfilledResults(toDelete.map(({ dir }) => limit(async () => {
-                    await rm(dir, { recursive: true, force: true });
+                    await fs.promises.rm(dir, { recursive: true, force: true });
                     info(`Old Report deleted from '${dir}'`);
                 })));
                 await this.git.add('-u');
@@ -191,27 +170,22 @@ export class GithubPagesService {
     }
     /** Creates a branch from the default branch if it doesn't exist */
     async createBranchFromDefault() {
-        // Use ls-remote instead of symbolic-ref — symbolic-ref requires origin/HEAD
-        // which isn't set after a targeted fetch (only after clone or remote set-head).
-        const lsRemote = await this.git.listRemote(['--symref', 'HEAD']);
-        // Output format: "ref: refs/heads/main\tHEAD\n<sha>\tHEAD\n"
-        const match = lsRemote.match(/^ref:\s+refs\/heads\/(\S+)\s+HEAD/m);
-        if (!match?.[1]) {
-            throw new Error(`Could not determine default branch from ls-remote output: '${lsRemote.trim()}'`);
-        }
-        const defaultBranch = match[1];
-        await this.git.fetch('origin', defaultBranch, { '--depth': 1, '--no-tags': null });
+        const defaultBranch = (await this.git.raw(['symbolic-ref', 'refs/remotes/origin/HEAD']))
+            .trim()
+            .split('/')
+            .pop();
         await this.git.checkoutBranch(this.branch, `origin/${defaultBranch}`);
         info(`Branch '${this.branch}' created from '${defaultBranch}'.`);
     }
     /** Handles Git push with retry logic specifically for concurrent push scenarios */
     async gitPushWithRetry() {
-        // Backup created lazily on first push rejection — avoids unnecessary I/O on happy path
+        // Back up report outside the working tree so deleteOldReports won't find it
         const backupDir = path.join(path.dirname(inputs.WORKSPACE), 'report-backup');
-        let backupCreated = false;
+        await fs.promises.cp(this.reportDir, backupDir, { recursive: true });
+        let pushRejected = false;
         try {
             await withRetry(async () => {
-                if (backupCreated) {
+                if (pushRejected) {
                     // Previous push was rejected — reset to latest remote and re-apply
                     try {
                         await this.git.merge(['--abort']);
@@ -221,26 +195,20 @@ export class GithubPagesService {
                     }
                     await this.git.fetch('origin', this.branch, { '--depth': 1 });
                     await this.git.reset(['--hard', `origin/${this.branch}`]);
-                    await cp(backupDir, this.reportDir, { recursive: true });
+                    await fs.promises.cp(backupDir, this.reportDir, { recursive: true });
                     await this.prepareAndCommit();
                 }
                 try {
                     await this.git.push('origin', this.branch);
                 }
                 catch (error) {
-                    // Back up report before retry — reset --hard will wipe the working tree
-                    if (!backupCreated) {
-                        await cp(this.reportDir, backupDir, { recursive: true });
-                        backupCreated = true;
-                    }
+                    pushRejected = true;
                     throw error;
                 }
             });
         }
         finally {
-            if (backupCreated) {
-                await rm(backupDir, { recursive: true, force: true });
-            }
+            await fs.promises.rm(backupDir, { recursive: true, force: true });
         }
     }
 }

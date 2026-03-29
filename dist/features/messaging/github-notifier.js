@@ -1,11 +1,5 @@
-import { warning } from '@actions/core';
 import { buildSummaryTable } from '../../utilities/summary-table.js';
 export class GitHubNotifier {
-    client;
-    prNumber;
-    token;
-    prComment;
-    writeSummary;
     constructor({ client, prNumber, prComment, token, writeSummary }) {
         this.client = client;
         this.prNumber = prNumber;
@@ -17,10 +11,9 @@ export class GitHubNotifier {
         const message = buildSummaryTable([
             {
                 reportName: data.reportName ?? 'Allure Report',
-                reportUrl: data.originalReportUrl ?? data.reportUrl,
+                reportUrl: data.reportUrl,
                 stats: data.resultStatus,
                 duration: data.duration,
-                reruns: data.reruns,
             },
         ]);
         const promises = [];
@@ -33,11 +26,6 @@ export class GitHubNotifier {
         if (this.writeSummary) {
             promises.push(this.client.updateSummary(message));
         }
-        const results = await Promise.allSettled(promises);
-        for (const result of results) {
-            if (result.status === 'rejected') {
-                warning(`GitHub notification failed: ${result.reason}`);
-            }
-        }
+        await Promise.allSettled(promises);
     }
 }

@@ -25,7 +25,6 @@ import {
     NotificationData,
     Notifier,
     NotifyHandler,
-    ReportStatistic,
     validateResultsPaths,
 } from './shared/index.js';
 import { buildSummaryTable, DeployMeta, RerunInfo, SummaryRow } from './utilities/summary-table.js';
@@ -69,14 +68,12 @@ async function runDeployMode() {
             pageUrl,
             reportDir,
             pagesSourcePath,
+            workspace: inputs.WORKSPACE,
         });
 
         await mkdir(reportDir, { recursive: true, mode: 0o755 });
 
         const resultPaths = await validateResultsPaths(inputs.allure_results_path);
-        if (resultPaths.length === 0) {
-            throw new Error(`No valid allure results found at: ${inputs.allure_results_path}`);
-        }
         const storage = inputs.show_history ? await initializeStorage(owner, repo) : undefined;
         const reportUrl = await stageDeployment({ host, storage, RESULTS_PATHS: resultPaths });
         const config: AllureConfig = {
@@ -92,8 +89,7 @@ async function runDeployMode() {
         await generateAllureReport({ allure, reportUrl });
         const wallClockDuration = await getTestDuration(inputs.RESULTS_STAGING_PATH);
         await writeDeployMeta(reportDir, wallClockDuration);
-        const reportStats = await getReportStats(reportDir);
-        await finalizeDeployment({ host, storage, reportDir });
+        const [reportStats] = await finalizeDeployment({ host, storage, reportDir });
         const rerunInfo = await detectReruns(reportDir, pagesUrl, pagesSourcePath);
         await sendNotifications({
             resultStatus: reportStats.statistic,
@@ -122,6 +118,7 @@ async function runSummaryMode() {
             pageUrl: pagesUrl,
             reportDir: inputs.WORKSPACE,
             pagesSourcePath,
+            workspace: inputs.WORKSPACE,
         });
         await host.init();
 
@@ -149,7 +146,7 @@ async function validateGitHubPages() {
         throw new Error("Github Pages require a valid 'github_token'");
     }
 
-    const repoParts = inputs.github_pages_repo.split('/');
+    const repoParts = inputs.github_pages_repo!.split('/');
     if (repoParts.length !== 2 || !repoParts[0] || !repoParts[1]) {
         throw new Error(`Invalid github_pages_repo format. Expected 'owner/repo', got '${inputs.github_pages_repo}'`);
     }
@@ -164,21 +161,16 @@ async function validateGitHubPages() {
             throw e;
         });
 
-    const expectedBranch = inputs.github_pages_branch ?? 'gh-pages';
-    if (data.build_type !== 'legacy' || data.source?.branch !== expectedBranch) {
+    if (data.build_type !== 'legacy' || data.source?.branch !== inputs.github_pages_branch) {
         startGroup('Configuration Error');
-        error(`GitHub Pages must be configured to deploy from '${expectedBranch}' branch.`);
+        error(`GitHub Pages must be configured to deploy from '${inputs.github_pages_branch}' branch.`);
         error(`${github.context.serverUrl}/${inputs.github_pages_repo}/settings/pages`);
         endGroup();
-        throw new Error(`GitHub Pages must be configured to deploy from '${expectedBranch}' branch.`);
+        throw new Error(`GitHub Pages must be configured to deploy from '${inputs.github_pages_branch}' branch.`);
     }
 
-    if (!data.source?.path || !data.html_url) {
-        throw new Error('GitHub Pages API returned incomplete data (missing source path or URL). Is Pages fully configured?');
-    }
-
-    const pagesSourcePath = data.source.path.startsWith('/') ? data.source.path.slice(1) : data.source.path;
-    return { owner, repo, pagesSourcePath, pagesUrl: data.html_url };
+    const pagesSourcePath = data.source!.path.startsWith('/') ? data.source!.path.slice(1) : data.source!.path;
+    return { owner, repo, pagesSourcePath, pagesUrl: data.html_url! };
 }
 
 function getGitHubHost({
@@ -186,6 +178,7 @@ function getGitHubHost({
     owner,
     repo,
     reportDir,
+    workspace,
     pageUrl,
     pagesSourcePath,
 }: {
@@ -193,13 +186,15 @@ function getGitHubHost({
     owner: string;
     repo: string;
     reportDir: string;
+    workspace: string;
     pageUrl: string;
     pagesSourcePath: string;
 }): GithubHost {
-    const branch = inputs.github_pages_branch ?? 'gh-pages';
+    const branch = inputs.github_pages_branch!;
     const config: GitHubConfig = {
         owner,
         repo,
+        workspace,
         token,
         branch,
         reportDir,
@@ -246,16 +241,15 @@ async function stageDeployment({
 }) {
     info('Staging files...');
 
+    const copyResultsFiles = copyFiles({
+        from: RESULTS_PATHS,
+        to: inputs.RESULTS_STAGING_PATH,
+        concurrency: inputs.fileProcessingConcurrency,
+    });
     // host.init (git clone) and copyFiles run concurrently.
     // stageFilesFromStorage (artifact download + unzip) runs after both complete to avoid memory spikes on small runners.
-    const [result] = await Promise.all([
-        host.init(),
-        copyFiles({
-            from: RESULTS_PATHS,
-            to: inputs.RESULTS_STAGING_PATH,
-            concurrency: inputs.fileProcessingConcurrency,
-        }),
-    ]);
+    const result = await host.init();
+    await copyResultsFiles;
     if (inputs.show_history) {
         await storage?.stageFilesFromStorage();
     }
@@ -272,7 +266,7 @@ async function generateAllureReport({ allure, reportUrl }: { allure: Allure; rep
 async function writeDeployMeta(reportDir: string, wallClockDuration?: number): Promise<void> {
     const meta: DeployMeta = {
         runId: github.context.runId,
-        runAttempt: Number(github.context.runAttempt) || 1,
+        runAttempt: github.context.runAttempt,
         wallClockDuration,
         timestamp: Date.now(),
     };
@@ -289,8 +283,7 @@ async function detectReruns(
     pagesSourcePath: string,
 ): Promise<{ originalUrl: string; reruns: RerunInfo[] } | undefined> {
     // Rerun tracking requires prefix (for URL construction) and attempt > 1
-    const runAttempt = Number(github.context.runAttempt);
-    if (!runAttempt || runAttempt <= 1 || !inputs.prefix) return undefined;
+    if (github.context.runAttempt <= 1 || !inputs.prefix) return undefined;
 
     try {
         const prefixDir = path.dirname(reportDir);
@@ -354,18 +347,20 @@ async function finalizeDeployment({
     reportDir: string;
 }) {
     info('Finalizing deployment...');
-    await Promise.all([
+    const result = await Promise.all([
+        getReportStats(reportDir),
         host.deploy(),
         storage?.uploadArtifacts(),
         copyReportToCustomDir(reportDir),
     ]);
     info('Deployment finalized.');
+    return result;
 }
 
 async function copyReportToCustomDir(reportDir: string): Promise<void> {
     if (inputs.custom_report_dir) {
         try {
-            await copyDirectory(reportDir, path.resolve(inputs.custom_report_dir));
+            await copyDirectory(reportDir, inputs.custom_report_dir);
         } catch (e) {
             error(`${e}`);
         }
@@ -394,8 +389,7 @@ async function scanPrefixSummaries(
     let dirEntries: string[];
     try {
         dirEntries = await readdir(rootDir);
-    } catch (e) {
-        warning(`Failed to read root directory '${rootDir}': ${e}`);
+    } catch {
         return rows;
     }
 
@@ -441,10 +435,7 @@ async function scanSinglePrefix(
     const entryStat = await stat(prefixDir).catch(() => null);
     if (!entryStat?.isDirectory()) return undefined;
 
-    const runs = await readdir(prefixDir).catch((e: unknown) => {
-        warning(`Failed to read prefix directory '${dirName}': ${e}`);
-        return [] as string[];
-    });
+    const runs = await readdir(prefixDir).catch(() => [] as string[]);
     const runDirs = runs
         .filter((r) => /^\d+$/.test(r))
         .sort((a, b) => Number(b) - Number(a));
@@ -503,7 +494,7 @@ async function scanSinglePrefix(
 /**
  * Scans run directories for deploy.json files matching a specific runId.
  * Stops early once attempt 1 is found (dirs are sorted newest-first).
- * Results are unsorted — callers are responsible for ordering.
+ * Returns results sorted by attempt ascending.
  */
 async function findDeployMetasForRun(
     prefixDir: string,
@@ -522,23 +513,15 @@ async function findDeployMetasForRun(
                     if (raw.runAttempt === 1) break;
                 }
             }
-        } catch (e) {
-            warning(`Failed to read deploy.json in ${dir}: ${e}`);
+        } catch {
+            // skip unreadable meta
         }
     }
-    return deployMetas;
-}
-
-interface SummaryJson {
-    name?: string;
-    stats?: ReportStatistic;
-    statistic?: ReportStatistic;
-    duration?: number;
-    href?: string;
+    return deployMetas.sort((a, b) => a.meta.runAttempt - b.meta.runAttempt);
 }
 
 /** Reads summary.json from a specific report directory (tries both single/multi-plugin paths). */
-async function readSummaryFromDir(reportDir: string): Promise<SummaryJson | undefined> {
+async function readSummaryFromDir(reportDir: string): Promise<any | undefined> {
     for (const candidate of ['summary.json', 'awesome/summary.json']) {
         const summaryPath = path.join(reportDir, candidate);
         if (!existsSync(summaryPath)) continue;
@@ -552,11 +535,8 @@ async function readSummaryFromDir(reportDir: string): Promise<SummaryJson | unde
 }
 
 /** Finds the latest run directory under a prefix and reads its summary.json. */
-async function findLatestSummary(prefixDir: string): Promise<SummaryJson | undefined> {
-    const runs = await readdir(prefixDir).catch((e: unknown) => {
-        warning(`Failed to read directory for latest summary: ${e}`);
-        return [] as string[];
-    });
+async function findLatestSummary(prefixDir: string): Promise<any | undefined> {
+    const runs = await readdir(prefixDir).catch(() => [] as string[]);
     const latestRunDir = runs
         .filter((r) => /^\d+$/.test(r))
         .sort((a, b) => Number(b) - Number(a))[0];

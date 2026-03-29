@@ -15,7 +15,7 @@ function getInputOrUndefined(name) {
 }
 const inputs = {
     mode: (getInput('mode') || 'deploy'),
-    summary: getInput('summary') !== 'false',
+    summary: getBooleanInput('summary'),
     prefixes: getInputOrUndefined('prefixes'),
     language: getInputOrUndefined('language'),
     report_name: getInputOrUndefined('report_name'),

@@ -1,4 +1,3 @@
-import { warning } from '@actions/core';
 import { GithubInterface } from '../../interfaces/github.interface.js';
 import { NotificationData, Notifier } from '../../shared/index.js';
 import { GitHubService } from '../../services/github.service.js';
@@ -47,11 +46,6 @@ export class GitHubNotifier implements Notifier {
         if (this.writeSummary) {
             promises.push(this.client.updateSummary(message));
         }
-        const results = await Promise.allSettled(promises);
-        for (const result of results) {
-            if (result.status === 'rejected') {
-                warning(`GitHub notification failed: ${result.reason}`);
-            }
-        }
+        await Promise.allSettled(promises);
     }
 }

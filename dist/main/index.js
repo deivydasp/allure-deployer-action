@@ -98402,67 +98402,29 @@ const external_node_module_namespaceObject = __WEBPACK_EXTERNAL_createRequire(im
 
 
 
-const TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
-const MAX_BUFFER_SIZE = 10 * 1024 * 1024; // 10 MB
-let allureCliPath;
-function resolveAllureCli() {
-    if (allureCliPath)
-        return allureCliPath;
-    const require = (0,external_node_module_namespaceObject.createRequire)(import.meta.url);
-    const allurePkgDir = external_node_path_.dirname(require.resolve('allure'));
-    const resolved = external_node_path_.resolve(allurePkgDir, '..', 'cli.js');
-    if (!(0,external_node_fs_.existsSync)(resolved)) {
-        throw new Error(`Allure CLI not found at ${resolved}. The allure package structure may have changed.`);
-    }
-    allureCliPath = resolved;
-    return allureCliPath;
+const allure_service_require = (0,external_node_module_namespaceObject.createRequire)(import.meta.url);
+const allurePkgDir = external_node_path_.dirname(allure_service_require.resolve('allure'));
+// Navigate from dist/ up to the package root where cli.js lives
+const allureCli = external_node_path_.resolve(allurePkgDir, '..', 'cli.js');
+if (!(0,external_node_fs_.existsSync)(allureCli)) {
+    throw new Error(`Allure CLI not found at ${allureCli}. The allure package structure may have changed.`);
 }
 class AllureService {
     runCommand(args) {
-        const allureCli = resolveAllureCli();
         const allureProcess = (0,external_node_child_process_namespaceObject.spawn)(process.execPath, [allureCli, ...args], { stdio: ['ignore', 'pipe', 'pipe'] });
         let stdout = '';
         let stderr = '';
-        let stdoutTruncated = false;
-        let stderrTruncated = false;
-        const timers = [];
-        timers.push(setTimeout(() => {
-            allureProcess.kill('SIGTERM');
-            timers.push(setTimeout(() => {
-                if (!allureProcess.killed)
-                    allureProcess.kill('SIGKILL');
-            }, 5000));
-        }, TIMEOUT_MS));
-        const clearTimers = () => timers.forEach((t) => clearTimeout(t));
         return new Promise((resolve, reject) => {
             allureProcess.stdout?.on('data', (data) => {
-                if (!stdoutTruncated) {
-                    stdout += data.toString();
-                    if (stdout.length >= MAX_BUFFER_SIZE) {
-                        stdout = stdout.slice(0, MAX_BUFFER_SIZE) + '\n... [stdout truncated]';
-                        stdoutTruncated = true;
-                    }
-                }
+                stdout += data.toString();
             });
             allureProcess.stderr?.on('data', (data) => {
-                if (!stderrTruncated) {
-                    stderr += data.toString();
-                    if (stderr.length >= MAX_BUFFER_SIZE) {
-                        stderr = stderr.slice(0, MAX_BUFFER_SIZE) + '\n... [stderr truncated]';
-                        stderrTruncated = true;
-                    }
-                }
+                stderr += data.toString();
             });
             allureProcess.on('error', (error) => {
-                clearTimers();
                 reject(error);
             });
-            allureProcess.on('close', (exitCode, signal) => {
-                clearTimers();
-                if (signal === 'SIGTERM' || signal === 'SIGKILL') {
-                    reject(new Error(`Allure CLI timed out after ${TIMEOUT_MS / 1000}s and was killed`));
-                    return;
-                }
+            allureProcess.on('exit', (exitCode) => {
                 resolve({ exitCode: exitCode ?? 1, stdout, stderr });
             });
         });
@@ -98476,8 +98438,6 @@ class AllureService {
 
 
 class Allure {
-    allureRunner;
-    config;
     constructor({ allureRunner, config }) {
         this.allureRunner = allureRunner ?? new AllureService();
         this.config = config;
@@ -98557,10 +98517,7 @@ class Allure {
     async postProcessHistory(reportUrl) {
         try {
             const content = await promises_namespaceObject.readFile(this.config.HISTORY_PATH, 'utf8');
-            const trimmed = content.trimEnd();
-            if (!trimmed)
-                return;
-            let lines = trimmed.split('\n');
+            let lines = content.trimEnd().split('\n');
             if (reportUrl) {
                 const lastEntry = JSON.parse(lines[lines.length - 1]);
                 lastEntry.url = reportUrl;
@@ -98632,7 +98589,6 @@ class ConsoleNotifier {
 ;// CONCATENATED MODULE: ./dist/shared/utilities/notify-handler.js
 
 class NotifyHandler {
-    notifiers;
     constructor(notifiers) {
         this.notifiers = notifiers;
     }
@@ -98705,7 +98661,7 @@ async function getTestDuration(resultsDir) {
                 // skip malformed result files
             }
         }
-        if (minStart < Infinity && maxStop > 0 && maxStop >= minStart) {
+        if (minStart < Infinity && maxStop > 0) {
             return maxStop - minStart;
         }
     }
@@ -98723,19 +98679,16 @@ async function getReportStats(reportDir) {
     for (const summaryPath of summaryCandidates) {
         try {
             const summary = await readJsonFile(summaryPath);
-            const stats = summary.stats ?? summary.statistic;
-            if (stats) {
-                return {
-                    statistic: {
-                        passed: stats.passed ?? 0,
-                        broken: stats.broken ?? 0,
-                        failed: stats.failed ?? 0,
-                        skipped: stats.skipped ?? 0,
-                        unknown: stats.unknown ?? 0,
-                    },
-                    duration: summary.duration,
-                };
-            }
+            return {
+                statistic: {
+                    passed: summary.stats?.passed ?? 0,
+                    broken: summary.stats?.broken ?? 0,
+                    failed: summary.stats?.failed ?? 0,
+                    skipped: summary.stats?.skipped ?? 0,
+                    unknown: summary.stats?.unknown ?? 0,
+                },
+                duration: summary.duration,
+            };
         }
         catch {
             // try next candidate
@@ -99037,8 +98990,6 @@ async function copyFiles({ from, to, concurrency = 10, overwrite = false, }) {
 
 
 
-// EXTERNAL MODULE: external "node:fs/promises"
-var promises_ = __nccwpck_require__(51455);
 // EXTERNAL MODULE: ./node_modules/unzipper/unzip.js
 var unzip = __nccwpck_require__(23835);
 ;// CONCATENATED MODULE: external "node:os"
@@ -99129,11 +99080,8 @@ function isRetryableError(error) {
         message.includes('rate limit') ||
         message.includes('timeout') ||
         message.includes('network error') ||
-        // Git push rejection — match loosely to handle different git versions/locales
         message.includes('tip of your current branch is behind') ||
-        message.includes('failed to push some refs') ||
-        message.includes('non-fast-forward') ||
-        message.includes('[rejected]'));
+        message.includes('failed to push some refs'));
 }
 /**
  * Utility function to implement retry logic with exponential backoff
@@ -99154,12 +99102,11 @@ async function withRetry(operation, config = DEFAULT_RETRY_CONFIG) {
             }
             // If this was our last attempt, throw the error
             if (attempt === config.maxRetries) {
-                throw new Error(`Failed after ${config.maxRetries} attempts. Last error: ${error?.message || 'Unknown error'}`, { cause: error });
+                throw new Error(`Failed after ${config.maxRetries} attempts. Last error: ${error?.message || 'Unknown error'}`);
             }
-            // Add jitter: randomize between 50%-100% of delay to prevent thundering herd
-            const jitteredDelay = Math.floor(delay * (0.5 + Math.random() * 0.5));
-            warning(`Attempt ${attempt} failed. Retrying in ${jitteredDelay}ms. Error: ${error.message}`);
-            await new Promise((resolve) => setTimeout(resolve, jitteredDelay));
+            warning(`Attempt ${attempt} failed. Retrying in ${delay}ms. Error: ${error.message}`);
+            // Wait before retrying
+            await new Promise((resolve) => setTimeout(resolve, delay));
             // Calculate next delay with exponential backoff
             delay = Math.min(delay * config.backoffFactor, config.maxDelay);
         }
@@ -99198,9 +99145,6 @@ function removeTrailingSlash(p) {
 
 
 class GithubStorage {
-    provider;
-    args;
-    HISTORY_ARCHIVE_NAME;
     constructor(provider, args) {
         this.provider = provider;
         this.args = args;
@@ -99213,25 +99157,18 @@ class GithubStorage {
         }
     }
     unzipToStaging(zipFilePath, outputDir) {
-        const resolvedOutput = external_node_path_.resolve(outputDir);
         return new Promise((resolve, reject) => {
             const writePromises = [];
-            (0,external_node_fs_.createReadStream)(zipFilePath)
+            external_fs_.createReadStream(zipFilePath)
                 .pipe(unzip.Parse())
                 .on('entry', (entry) => {
                 if (entry.type === 'Directory') {
                     entry.autodrain();
                     return;
                 }
-                const fullPath = external_node_path_.resolve(outputDir, entry.path);
-                if (!fullPath.startsWith(resolvedOutput + external_node_path_.sep)) {
-                    warning(`Skipping zip entry with path traversal: ${entry.path}`);
-                    entry.autodrain();
-                    return;
-                }
-                (0,external_node_fs_.mkdirSync)(external_node_path_.dirname(fullPath), { recursive: true });
+                const fullPath = external_node_path_.join(outputDir, entry.path);
                 const writePromise = new Promise((res, rej) => {
-                    const writeStream = (0,external_node_fs_.createWriteStream)(fullPath);
+                    const writeStream = external_fs_.createWriteStream(fullPath);
                     writeStream.on('finish', res);
                     writeStream.on('error', (err) => {
                         entry.autodrain();
@@ -99251,7 +99188,7 @@ class GithubStorage {
                 }
             })
                 .on('error', (err) => {
-                warning(`Unzip file error: ${err.message}`);
+                warning('Unzip file error');
                 reject(err);
             });
         });
@@ -99267,8 +99204,8 @@ class GithubStorage {
      */
     async createStagingDirectories() {
         await Promise.all([
-            (0,promises_.mkdir)(this.args.ARCHIVE_DIR, { recursive: true }),
-            (0,promises_.mkdir)(this.args.RESULTS_STAGING_PATH, { recursive: true }),
+            promises_namespaceObject.mkdir(this.args.ARCHIVE_DIR, { recursive: true }),
+            promises_namespaceObject.mkdir(this.args.RESULTS_STAGING_PATH, { recursive: true }),
         ]);
     }
     /**
@@ -99311,7 +99248,7 @@ class GithubStorage {
         });
         if (downloadedPaths.length > 0) {
             const historyDir = external_node_path_.dirname(this.args.HISTORY_PATH);
-            await (0,promises_.mkdir)(historyDir, { recursive: true });
+            await promises_namespaceObject.mkdir(historyDir, { recursive: true });
             tasks.push(this.unzipToStaging(downloadedPaths[0], historyDir));
         }
         await allFulfilledResults(tasks);
@@ -99321,7 +99258,7 @@ class GithubStorage {
      */
     async uploadHistory() {
         try {
-            await (0,promises_.access)(this.args.HISTORY_PATH);
+            await promises_namespaceObject.access(this.args.HISTORY_PATH);
         }
         catch {
             warning('No history file found. History upload skipped.');
@@ -99334,7 +99271,6 @@ class GithubStorage {
 
 ;// CONCATENATED MODULE: ./dist/features/hosting/github.host.js
 class GithubHost {
-    client;
     constructor(client) {
         this.client = client;
     }
@@ -99413,13 +99349,7 @@ function buildSummaryTable(rows) {
 
 ;// CONCATENATED MODULE: ./dist/features/messaging/github-notifier.js
 
-
 class GitHubNotifier {
-    client;
-    prNumber;
-    token;
-    prComment;
-    writeSummary;
     constructor({ client, prNumber, prComment, token, writeSummary }) {
         this.client = client;
         this.prNumber = prNumber;
@@ -99447,12 +99377,7 @@ class GitHubNotifier {
         if (this.writeSummary) {
             promises.push(this.client.updateSummary(message));
         }
-        const results = await Promise.allSettled(promises);
-        for (const result of results) {
-            if (result.status === 'rejected') {
-                warning(`GitHub notification failed: ${result.reason}`);
-            }
-        }
+        await Promise.allSettled(promises);
     }
 }
 
@@ -143658,12 +143583,7 @@ const dist_src_Octokit = Octokit.plugin(requestLog, legacyRestEndpointMethods, p
 
 
 
-
 class artifact_service_ArtifactService {
-    artifactClient;
-    octokit;
-    owner;
-    repo;
     constructor({ token, repo, owner }) {
         this.artifactClient = new DefaultArtifactClient();
         this.octokit = new dist_src_Octokit({ auth: token, baseUrl: github_context.apiUrl });
@@ -143681,22 +143601,14 @@ class artifact_service_ArtifactService {
     }
     async deleteFile(id) {
         const operation = async () => {
-            try {
-                await this.octokit.request('DELETE /repos/{owner}/{repo}/actions/artifacts/{artifact_id}', {
-                    owner: this.owner,
-                    repo: this.repo,
-                    artifact_id: id,
-                    headers: {
-                        'X-GitHub-Api-Version': '2022-11-28',
-                    },
-                });
-            }
-            catch (error) {
-                // 404 means already deleted (e.g. by concurrent workflow) — treat as success
-                if (error instanceof RequestError && error.status === 404)
-                    return;
-                throw error;
-            }
+            return await this.octokit.request('DELETE /repos/{owner}/{repo}/actions/artifacts/{artifact_id}', {
+                owner: this.owner,
+                repo: this.repo,
+                artifact_id: id,
+                headers: {
+                    'X-GitHub-Api-Version': '2022-11-28',
+                },
+            });
         };
         await withRetry(operation, DEFAULT_RETRY_CONFIG);
     }
@@ -143720,21 +143632,20 @@ class artifact_service_ArtifactService {
                 const urlResponse = await withRetry(operation, DEFAULT_RETRY_CONFIG);
                 const artifactUrl = urlResponse.url;
                 return new Promise((resolve, reject) => {
-                    const DOWNLOAD_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
-                    const req = external_https_.get(artifactUrl, { timeout: DOWNLOAD_TIMEOUT_MS }, (response) => {
+                    external_https_.get(artifactUrl, (response) => {
                         if (response.statusCode !== 200) {
                             response.resume();
                             reject(new Error(`Failed to get '${artifactUrl}' (${response.statusCode}) ${response.statusMessage}`));
                             return;
                         }
-                        const fileStream = (0,external_node_fs_.createWriteStream)(filePath);
+                        const fileStream = external_fs_.createWriteStream(filePath);
                         response.on('error', (err) => {
                             fileStream.destroy();
-                            (0,external_node_fs_.unlink)(filePath, () => reject(err));
+                            external_fs_.unlink(filePath, () => reject(err));
                         });
                         fileStream.on('error', (err) => {
                             response.destroy();
-                            (0,external_node_fs_.unlink)(filePath, () => reject(err));
+                            external_fs_.unlink(filePath, () => reject(err));
                         });
                         fileStream.on('finish', () => {
                             fileStream.close();
@@ -143742,11 +143653,8 @@ class artifact_service_ArtifactService {
                         });
                         response.pipe(fileStream);
                     })
-                        .on('timeout', () => {
-                        req.destroy(new Error(`Artifact download timed out after ${DOWNLOAD_TIMEOUT_MS / 1000}s`));
-                    })
                         .on('error', (err) => {
-                        (0,external_node_fs_.unlink)(filePath, () => reject(err));
+                        external_fs_.unlink(filePath, () => reject(err));
                     });
                 });
             }));
@@ -143773,7 +143681,7 @@ class artifact_service_ArtifactService {
         if (!files || files.length < 2) {
             return files;
         }
-        return [...files].sort((a, b) => {
+        return files.sort((a, b) => {
             const aTime = new Date(a.created_at).getTime();
             const bTime = new Date(b.created_at).getTime();
             return order === Order.byOldestToNewest ? aTime - bTime : bTime - aTime;
@@ -148612,16 +148520,7 @@ var esm_default = gitInstanceFactory;
 
 
 
-
 class GithubPagesService {
-    git;
-    branch;
-    repo;
-    owner;
-    token;
-    reportDir;
-    pagesSourcePath;
-    pageUrl;
     constructor(config) {
         this.branch = config.branch;
         this.owner = config.owner;
@@ -148634,7 +148533,7 @@ class GithubPagesService {
     }
     /** Deploys the Allure report to GitHub Pages */
     async deployPages() {
-        if (!(0,external_node_fs_.existsSync)(this.reportDir)) {
+        if (!external_fs_.existsSync(this.reportDir)) {
             throw new Error(`Directory not found: ${this.reportDir}`);
         }
         if (!(await this.git.checkIsRepo(CheckRepoActions.IS_REPO_ROOT))) {
@@ -148652,7 +148551,7 @@ class GithubPagesService {
             await this.createRedirectPage(normalizeUrl(`${this.pageUrl}`));
             await this.createRootSummaryPage();
         }
-        if (!(0,external_node_fs_.existsSync)(external_node_path_.join(this.reportDir, 'index.html'))) {
+        if (!external_fs_.existsSync(external_node_path_.join(this.reportDir, 'index.html'))) {
             throw new Error(`No index.html found in ${this.reportDir}. Deployment aborted.`);
         }
         await this.git.add(`${removeTrailingSlash(this.reportDir)}/*`);
@@ -148662,8 +148561,8 @@ class GithubPagesService {
     async setupBranch() {
         await this.git.cwd(io.WORKSPACE);
         if (await this.git.checkIsRepo()) {
-            (0,external_node_fs_.rmSync)(io.WORKSPACE, { recursive: true, force: true });
-            (0,external_node_fs_.mkdirSync)(io.WORKSPACE, { recursive: true });
+            external_fs_.rmSync(io.WORKSPACE, { recursive: true, force: true });
+            external_fs_.mkdirSync(io.WORKSPACE, { recursive: true });
             await this.git.cwd(io.WORKSPACE);
         }
         await this.git.init();
@@ -148672,8 +148571,7 @@ class GithubPagesService {
         };
         await this.git.addConfig('http.https://github.com/.extraheader', `AUTHORIZATION: ${headers.Authorization}`, true, 'local');
         const actor = github_context.actor;
-        const senderId = github_context.payload.sender?.id ?? 41898282; // fallback: github-actions[bot]
-        const email = `${senderId}+${actor}@users.noreply.github.com`;
+        const email = `${github_context.payload.sender?.id}+${actor}@users.noreply.github.com`;
         await this.git.addConfig('user.email', email, true, 'local').addConfig('user.name', actor, true, 'local');
         const remote = `${github_context.serverUrl}/${this.owner}/${this.repo}.git`;
         await this.git.addRemote('origin', remote);
@@ -148688,14 +148586,13 @@ class GithubPagesService {
     }
     /** Creates a redirect page for the Allure report */
     async createRedirectPage(redirectUrl) {
-        const escapedUrl = normalizeUrl(`${redirectUrl}/index.html`).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
         const htmlContent = `<!DOCTYPE html>
 <meta charset="utf-8">
-<meta http-equiv="refresh" content="0; URL=${escapedUrl}">
+<meta http-equiv="refresh" content="0; URL=${normalizeUrl(`${redirectUrl}/index.html`)}">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">`;
         const filePath = external_node_path_.join(io.WORKSPACE, this.pagesSourcePath ?? '', io.prefix ?? '', 'index.html');
-        await (0,promises_.writeFile)(filePath, htmlContent);
+        await external_fs_.promises.writeFile(filePath, htmlContent);
         await this.git.add(filePath);
         info(`Redirect 'index.html' created at ${external_node_path_.posix.join(this.pagesSourcePath || '/', io.prefix ?? '')}`);
     }
@@ -148703,17 +148600,14 @@ class GithubPagesService {
     async createRootSummaryPage() {
         try {
             const rootDir = external_node_path_.join(io.WORKSPACE, this.pagesSourcePath ?? '');
-            const entries = await (0,promises_.readdir)(rootDir, { withFileTypes: true });
+            const entries = await external_fs_.promises.readdir(rootDir, { withFileTypes: true });
             const summaries = [];
             for (const entry of entries) {
                 if (!entry.isDirectory())
                     continue;
                 const prefixDir = external_node_path_.join(rootDir, entry.name);
                 // Only include prefixes that have numeric run subdirs (deployed reports)
-                const runs = await (0,promises_.readdir)(prefixDir, { withFileTypes: true }).catch((e) => {
-                    warning(`Failed to read prefix directory '${entry.name}': ${e}`);
-                    return [];
-                });
+                const runs = await external_fs_.promises.readdir(prefixDir, { withFileTypes: true }).catch(() => []);
                 const runDirs = runs
                     .filter((r) => r.isDirectory() && /^\d+$/.test(r.name))
                     .sort((a, b) => Number(b.name) - Number(a.name));
@@ -148723,8 +148617,8 @@ class GithubPagesService {
                 try {
                     for (const candidate of ['summary.json', 'awesome/summary.json']) {
                         const summaryPath = external_node_path_.join(latestDir, candidate);
-                        if ((0,external_node_fs_.existsSync)(summaryPath)) {
-                            const summary = JSON.parse(await (0,promises_.readFile)(summaryPath, 'utf8'));
+                        if (external_fs_.existsSync(summaryPath)) {
+                            const summary = JSON.parse(await external_fs_.promises.readFile(summaryPath, 'utf8'));
                             // Normalize Allure v2 format (statistic) to v3 format (stats)
                             if (!summary.stats && summary.statistic) {
                                 summary.stats = summary.statistic;
@@ -148751,10 +148645,6 @@ class GithubPagesService {
                 warning(`@allurereport/summary not available, skipping root summary page: ${e}`);
                 return;
             }
-            if (typeof generateSummary !== 'function') {
-                warning('@allurereport/summary does not export generateSummary — skipping root summary page');
-                return;
-            }
             await generateSummary(rootDir, summaries);
             await this.git.add(external_node_path_.join(rootDir, 'index.html'));
             info('Root summary page created');
@@ -148767,24 +148657,23 @@ class GithubPagesService {
     async deleteOldReports() {
         try {
             const parentDir = external_node_path_.dirname(this.reportDir);
-            const entries = await (0,promises_.readdir)(parentDir, { withFileTypes: true });
+            const entries = await external_fs_.promises.readdir(parentDir, { withFileTypes: true });
             // Single pass: filter report directories (name is a Date.now() timestamp)
             const reports = [];
             for (const entry of entries) {
                 if (!entry.isDirectory())
                     continue;
                 const dirPath = external_node_path_.join(entry.parentPath, entry.name);
-                if ((0,external_node_fs_.existsSync)(external_node_path_.join(dirPath, 'index.html'))) {
+                if (external_fs_.existsSync(external_node_path_.join(dirPath, 'index.html'))) {
                     reports.push({ dir: dirPath, name: entry.name });
                 }
             }
-            // Account for the incoming report (not yet on disk) by keeping one fewer old report
-            if (reports.length >= io.keep) {
+            if (reports.length > 1 && reports.length >= io.keep) {
                 reports.sort((a, b) => Number(a.name) - Number(b.name));
                 const limit = pLimit(10);
-                const toDelete = reports.slice(0, reports.length - io.keep + 1);
+                const toDelete = reports.slice(0, reports.length - io.keep);
                 await allFulfilledResults(toDelete.map(({ dir }) => limit(async () => {
-                    await (0,promises_.rm)(dir, { recursive: true, force: true });
+                    await external_fs_.promises.rm(dir, { recursive: true, force: true });
                     info(`Old Report deleted from '${dir}'`);
                 })));
                 await this.git.add('-u');
@@ -148796,27 +148685,22 @@ class GithubPagesService {
     }
     /** Creates a branch from the default branch if it doesn't exist */
     async createBranchFromDefault() {
-        // Use ls-remote instead of symbolic-ref — symbolic-ref requires origin/HEAD
-        // which isn't set after a targeted fetch (only after clone or remote set-head).
-        const lsRemote = await this.git.listRemote(['--symref', 'HEAD']);
-        // Output format: "ref: refs/heads/main\tHEAD\n<sha>\tHEAD\n"
-        const match = lsRemote.match(/^ref:\s+refs\/heads\/(\S+)\s+HEAD/m);
-        if (!match?.[1]) {
-            throw new Error(`Could not determine default branch from ls-remote output: '${lsRemote.trim()}'`);
-        }
-        const defaultBranch = match[1];
-        await this.git.fetch('origin', defaultBranch, { '--depth': 1, '--no-tags': null });
+        const defaultBranch = (await this.git.raw(['symbolic-ref', 'refs/remotes/origin/HEAD']))
+            .trim()
+            .split('/')
+            .pop();
         await this.git.checkoutBranch(this.branch, `origin/${defaultBranch}`);
         info(`Branch '${this.branch}' created from '${defaultBranch}'.`);
     }
     /** Handles Git push with retry logic specifically for concurrent push scenarios */
     async gitPushWithRetry() {
-        // Backup created lazily on first push rejection — avoids unnecessary I/O on happy path
+        // Back up report outside the working tree so deleteOldReports won't find it
         const backupDir = external_node_path_.join(external_node_path_.dirname(io.WORKSPACE), 'report-backup');
-        let backupCreated = false;
+        await external_fs_.promises.cp(this.reportDir, backupDir, { recursive: true });
+        let pushRejected = false;
         try {
             await withRetry(async () => {
-                if (backupCreated) {
+                if (pushRejected) {
                     // Previous push was rejected — reset to latest remote and re-apply
                     try {
                         await this.git.merge(['--abort']);
@@ -148826,26 +148710,20 @@ class GithubPagesService {
                     }
                     await this.git.fetch('origin', this.branch, { '--depth': 1 });
                     await this.git.reset(['--hard', `origin/${this.branch}`]);
-                    await (0,promises_.cp)(backupDir, this.reportDir, { recursive: true });
+                    await external_fs_.promises.cp(backupDir, this.reportDir, { recursive: true });
                     await this.prepareAndCommit();
                 }
                 try {
                     await this.git.push('origin', this.branch);
                 }
                 catch (error) {
-                    // Back up report before retry — reset --hard will wipe the working tree
-                    if (!backupCreated) {
-                        await (0,promises_.cp)(this.reportDir, backupDir, { recursive: true });
-                        backupCreated = true;
-                    }
+                    pushRejected = true;
                     throw error;
                 }
             });
         }
         finally {
-            if (backupCreated) {
-                await (0,promises_.rm)(backupDir, { recursive: true, force: true });
-            }
+            await external_fs_.promises.rm(backupDir, { recursive: true, force: true });
         }
     }
 }
@@ -148859,8 +148737,8 @@ class GitHubService {
         try {
             setOutput(name, value);
         }
-        catch (e) {
-            warning(`Failed to set output '${name}': ${e}`);
+        catch (_e) {
+            // ignore
         }
     }
     async updatePr({ message, token, prNumber }) {
@@ -148882,12 +148760,7 @@ class GitHubService {
         }
     }
     async updateSummary(message) {
-        try {
-            await summary.addRaw(message, true).write();
-        }
-        catch (e) {
-            warning(`Failed to write job summary: ${e}`);
-        }
+        await summary.addRaw(message, true).write();
     }
 }
 
@@ -148943,12 +148816,10 @@ async function runDeployMode() {
             pageUrl,
             reportDir,
             pagesSourcePath,
+            workspace: io.WORKSPACE,
         });
         await (0,promises_namespaceObject.mkdir)(reportDir, { recursive: true, mode: 0o755 });
         const resultPaths = await validateResultsPaths(io.allure_results_path);
-        if (resultPaths.length === 0) {
-            throw new Error(`No valid allure results found at: ${io.allure_results_path}`);
-        }
         const storage = io.show_history ? await initializeStorage(owner, repo) : undefined;
         const reportUrl = await stageDeployment({ host, storage, RESULTS_PATHS: resultPaths });
         const config = {
@@ -148964,8 +148835,7 @@ async function runDeployMode() {
         await generateAllureReport({ allure, reportUrl });
         const wallClockDuration = await getTestDuration(io.RESULTS_STAGING_PATH);
         await writeDeployMeta(reportDir, wallClockDuration);
-        const reportStats = await getReportStats(reportDir);
-        await finalizeDeployment({ host, storage, reportDir });
+        const [reportStats] = await finalizeDeployment({ host, storage, reportDir });
         const rerunInfo = await detectReruns(reportDir, pagesUrl, pagesSourcePath);
         await sendNotifications({
             resultStatus: reportStats.statistic,
@@ -148993,6 +148863,7 @@ async function runSummaryMode() {
             pageUrl: pagesUrl,
             reportDir: io.WORKSPACE,
             pagesSourcePath,
+            workspace: io.WORKSPACE,
         });
         await host.init();
         // Scan prefixes and read summary.json from each
@@ -149029,25 +148900,22 @@ async function validateGitHubPages() {
         }
         throw e;
     });
-    const expectedBranch = io.github_pages_branch ?? 'gh-pages';
-    if (data.build_type !== 'legacy' || data.source?.branch !== expectedBranch) {
+    if (data.build_type !== 'legacy' || data.source?.branch !== io.github_pages_branch) {
         startGroup('Configuration Error');
-        core_error(`GitHub Pages must be configured to deploy from '${expectedBranch}' branch.`);
+        core_error(`GitHub Pages must be configured to deploy from '${io.github_pages_branch}' branch.`);
         core_error(`${github_context.serverUrl}/${io.github_pages_repo}/settings/pages`);
         endGroup();
-        throw new Error(`GitHub Pages must be configured to deploy from '${expectedBranch}' branch.`);
-    }
-    if (!data.source?.path || !data.html_url) {
-        throw new Error('GitHub Pages API returned incomplete data (missing source path or URL). Is Pages fully configured?');
+        throw new Error(`GitHub Pages must be configured to deploy from '${io.github_pages_branch}' branch.`);
     }
     const pagesSourcePath = data.source.path.startsWith('/') ? data.source.path.slice(1) : data.source.path;
     return { owner, repo, pagesSourcePath, pagesUrl: data.html_url };
 }
-function getGitHubHost({ token, owner, repo, reportDir, pageUrl, pagesSourcePath, }) {
-    const branch = io.github_pages_branch ?? 'gh-pages';
+function getGitHubHost({ token, owner, repo, reportDir, workspace, pageUrl, pagesSourcePath, }) {
+    const branch = io.github_pages_branch;
     const config = {
         owner,
         repo,
+        workspace,
         token,
         branch,
         reportDir,
@@ -149078,16 +148946,15 @@ async function initializeStorage(owner, repo) {
 }
 async function stageDeployment({ storage, host, RESULTS_PATHS, }) {
     info('Staging files...');
+    const copyResultsFiles = copyFiles({
+        from: RESULTS_PATHS,
+        to: io.RESULTS_STAGING_PATH,
+        concurrency: io.fileProcessingConcurrency,
+    });
     // host.init (git clone) and copyFiles run concurrently.
     // stageFilesFromStorage (artifact download + unzip) runs after both complete to avoid memory spikes on small runners.
-    const [result] = await Promise.all([
-        host.init(),
-        copyFiles({
-            from: RESULTS_PATHS,
-            to: io.RESULTS_STAGING_PATH,
-            concurrency: io.fileProcessingConcurrency,
-        }),
-    ]);
+    const result = await host.init();
+    await copyResultsFiles;
     if (io.show_history) {
         await storage?.stageFilesFromStorage();
     }
@@ -149102,7 +148969,7 @@ async function generateAllureReport({ allure, reportUrl }) {
 async function writeDeployMeta(reportDir, wallClockDuration) {
     const meta = {
         runId: github_context.runId,
-        runAttempt: Number(github_context.runAttempt) || 1,
+        runAttempt: github_context.runAttempt,
         wallClockDuration,
         timestamp: Date.now(),
     };
@@ -149114,8 +148981,7 @@ async function writeDeployMeta(reportDir, wallClockDuration) {
  */
 async function detectReruns(reportDir, pagesUrl, pagesSourcePath) {
     // Rerun tracking requires prefix (for URL construction) and attempt > 1
-    const runAttempt = Number(github_context.runAttempt);
-    if (!runAttempt || runAttempt <= 1 || !io.prefix)
+    if (github_context.runAttempt <= 1 || !io.prefix)
         return undefined;
     try {
         const prefixDir = external_node_path_.dirname(reportDir);
@@ -149163,17 +149029,19 @@ function createGitHubBuildUrl() {
 }
 async function finalizeDeployment({ storage, host, reportDir, }) {
     info('Finalizing deployment...');
-    await Promise.all([
+    const result = await Promise.all([
+        getReportStats(reportDir),
         host.deploy(),
         storage?.uploadArtifacts(),
         copyReportToCustomDir(reportDir),
     ]);
     info('Deployment finalized.');
+    return result;
 }
 async function copyReportToCustomDir(reportDir) {
     if (io.custom_report_dir) {
         try {
-            await copyDirectory(reportDir, external_node_path_.resolve(io.custom_report_dir));
+            await copyDirectory(reportDir, io.custom_report_dir);
         }
         catch (e) {
             core_error(`${e}`);
@@ -149195,8 +149063,7 @@ async function scanPrefixSummaries(rootDir, pagesUrl, pagesSourcePath) {
     try {
         dirEntries = await (0,promises_namespaceObject.readdir)(rootDir);
     }
-    catch (e) {
-        warning(`Failed to read root directory '${rootDir}': ${e}`);
+    catch {
         return rows;
     }
     // Determine which prefixes to scan and whether to show "not deployed" indicators
@@ -149233,10 +149100,7 @@ async function scanSinglePrefix(prefixDir, dirName, pagesUrl, pagesSourcePath) {
     const entryStat = await (0,promises_namespaceObject.stat)(prefixDir).catch(() => null);
     if (!entryStat?.isDirectory())
         return undefined;
-    const runs = await (0,promises_namespaceObject.readdir)(prefixDir).catch((e) => {
-        warning(`Failed to read prefix directory '${dirName}': ${e}`);
-        return [];
-    });
+    const runs = await (0,promises_namespaceObject.readdir)(prefixDir).catch(() => []);
     const runDirs = runs
         .filter((r) => /^\d+$/.test(r))
         .sort((a, b) => Number(b) - Number(a));
@@ -149288,7 +149152,7 @@ async function scanSinglePrefix(prefixDir, dirName, pagesUrl, pagesSourcePath) {
 /**
  * Scans run directories for deploy.json files matching a specific runId.
  * Stops early once attempt 1 is found (dirs are sorted newest-first).
- * Results are unsorted — callers are responsible for ordering.
+ * Returns results sorted by attempt ascending.
  */
 async function findDeployMetasForRun(prefixDir, runDirs, runId) {
     const deployMetas = [];
@@ -149306,11 +149170,11 @@ async function findDeployMetasForRun(prefixDir, runDirs, runId) {
                 }
             }
         }
-        catch (e) {
-            warning(`Failed to read deploy.json in ${dir}: ${e}`);
+        catch {
+            // skip unreadable meta
         }
     }
-    return deployMetas;
+    return deployMetas.sort((a, b) => a.meta.runAttempt - b.meta.runAttempt);
 }
 /** Reads summary.json from a specific report directory (tries both single/multi-plugin paths). */
 async function readSummaryFromDir(reportDir) {
@@ -149329,10 +149193,7 @@ async function readSummaryFromDir(reportDir) {
 }
 /** Finds the latest run directory under a prefix and reads its summary.json. */
 async function findLatestSummary(prefixDir) {
-    const runs = await (0,promises_namespaceObject.readdir)(prefixDir).catch((e) => {
-        warning(`Failed to read directory for latest summary: ${e}`);
-        return [];
-    });
+    const runs = await (0,promises_namespaceObject.readdir)(prefixDir).catch(() => []);
     const latestRunDir = runs
         .filter((r) => /^\d+$/.test(r))
         .sort((a, b) => Number(b) - Number(a))[0];

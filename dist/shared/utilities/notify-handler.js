@@ -1,6 +1,5 @@
 import { warning } from '@actions/core';
 export class NotifyHandler {
-    notifiers;
     constructor(notifiers) {
         this.notifiers = notifiers;
     }

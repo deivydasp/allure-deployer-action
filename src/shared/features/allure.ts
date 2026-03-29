@@ -107,9 +107,7 @@ export class Allure {
     private async postProcessHistory(reportUrl?: string): Promise<void> {
         try {
             const content = await fs.readFile(this.config.HISTORY_PATH, 'utf8');
-            const trimmed = content.trimEnd();
-            if (!trimmed) return;
-            let lines = trimmed.split('\n');
+            let lines = content.trimEnd().split('\n');
 
             if (reportUrl) {
                 const lastEntry = JSON.parse(lines[lines.length - 1]);

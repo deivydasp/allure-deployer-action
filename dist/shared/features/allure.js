@@ -4,8 +4,6 @@ import { info, warning } from '@actions/core';
 import { propertiesReader } from 'properties-reader';
 import { AllureService } from '../services/allure.service.js';
 export class Allure {
-    allureRunner;
-    config;
     constructor({ allureRunner, config }) {
         this.allureRunner = allureRunner ?? new AllureService();
         this.config = config;
@@ -85,10 +83,7 @@ export class Allure {
     async postProcessHistory(reportUrl) {
         try {
             const content = await fs.readFile(this.config.HISTORY_PATH, 'utf8');
-            const trimmed = content.trimEnd();
-            if (!trimmed)
-                return;
-            let lines = trimmed.split('\n');
+            let lines = content.trimEnd().split('\n');
             if (reportUrl) {
                 const lastEntry = JSON.parse(lines[lines.length - 1]);
                 lastEntry.url = reportUrl;

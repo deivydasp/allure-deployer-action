@@ -1,9 +1,9 @@
 import { IStorage, Order } from '../shared/index.js';
 import path from 'node:path';
-import { access, mkdir } from 'node:fs/promises';
-import { createReadStream, createWriteStream, mkdirSync } from 'node:fs';
+import fs from 'fs/promises';
 import pLimit from 'p-limit';
 import { ArtifactService } from '../services/artifact.service.js';
+import fsSync from 'fs';
 import unzipper, { Entry } from 'unzipper';
 import { RequestError } from '@octokit/request-error';
 import { warning } from '@actions/core';
@@ -36,28 +36,22 @@ export class GithubStorage implements IStorage {
     }
 
     private unzipToStaging(zipFilePath: string, outputDir: string): Promise<boolean> {
-        const resolvedOutput = path.resolve(outputDir);
         return new Promise((resolve, reject) => {
             const writePromises: Promise<void>[] = [];
 
-            createReadStream(zipFilePath)
+            fsSync
+                .createReadStream(zipFilePath)
                 .pipe(unzipper.Parse())
                 .on('entry', (entry: Entry) => {
                     if (entry.type === 'Directory') {
                         entry.autodrain();
                         return;
                     }
-                    const fullPath = path.resolve(outputDir, entry.path);
-                    if (!fullPath.startsWith(resolvedOutput + path.sep)) {
-                        warning(`Skipping zip entry with path traversal: ${entry.path}`);
-                        entry.autodrain();
-                        return;
-                    }
-                    mkdirSync(path.dirname(fullPath), { recursive: true });
+                    const fullPath = path.join(outputDir, entry.path);
                     const writePromise = new Promise<void>((res, rej) => {
-                        const writeStream = createWriteStream(fullPath);
+                        const writeStream = fsSync.createWriteStream(fullPath);
                         writeStream.on('finish', res);
-                        writeStream.on('error', (err: Error) => {
+                        writeStream.on('error', (err) => {
                             entry.autodrain();
                             rej(err);
                         });
@@ -69,12 +63,12 @@ export class GithubStorage implements IStorage {
                     try {
                         await Promise.all(writePromises);
                         resolve(true);
-                    } catch (err: unknown) {
+                    } catch (err) {
                         reject(err);
                     }
                 })
-                .on('error', (err: Error) => {
-                    warning(`Unzip file error: ${err.message}`);
+                .on('error', (err) => {
+                    warning('Unzip file error');
                     reject(err);
                 });
         });
@@ -93,8 +87,8 @@ export class GithubStorage implements IStorage {
      */
     private async createStagingDirectories(): Promise<void> {
         await Promise.all([
-            mkdir(this.args.ARCHIVE_DIR, { recursive: true }),
-            mkdir(this.args.RESULTS_STAGING_PATH, { recursive: true }),
+            fs.mkdir(this.args.ARCHIVE_DIR, { recursive: true }),
+            fs.mkdir(this.args.RESULTS_STAGING_PATH, { recursive: true }),
         ]);
     }
 
@@ -142,7 +136,7 @@ export class GithubStorage implements IStorage {
         });
         if (downloadedPaths.length > 0) {
             const historyDir = path.dirname(this.args.HISTORY_PATH);
-            await mkdir(historyDir, { recursive: true });
+            await fs.mkdir(historyDir, { recursive: true });
             tasks.push(this.unzipToStaging(downloadedPaths[0], historyDir));
         }
         await allFulfilledResults(tasks);
@@ -153,7 +147,7 @@ export class GithubStorage implements IStorage {
      */
     private async uploadHistory(): Promise<void> {
         try {
-            await access(this.args.HISTORY_PATH);
+            await fs.access(this.args.HISTORY_PATH);
         } catch {
             warning('No history file found. History upload skipped.');
             return;
